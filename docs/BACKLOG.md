@@ -16,7 +16,7 @@ implementarlas.
 - `docs/epics/EPIC-2-orquestacion-airflow.md` — Orquestación con Airflow.
   Estado: Completada.
 - `docs/epics/EPIC-3-escaneo-dependencias-ci.md` — Escaneo de dependencias en
-  CI. Estado: Propuesta.
+  CI. Estado: Completada.
 
 ## Niebla
 
@@ -30,6 +30,16 @@ implementarlas.
   endpoint interno de invalidación al terminar `load_to_solr`, son las dos
   opciones más obvias, sin decidir cuál encaja mejor. Descubierto y anotado
   durante el cierre de EPIC-2 (2026-09-14).
+
+## Vigilancia (sin acción posible por ahora)
+
+- **`uuid` &lt;11.1.1 (moderate, sin fix disponible)** — arrastrado por
+  `webpack-dev-server` (vía `sockjs`), a su vez dependencia de
+  `@angular-devkit/build-angular`. Es tooling de build/desarrollo, no llega al
+  bundle de producción. `npm audit fix` no puede resolverlo porque el
+  mantenedor de `uuid` no ha publicado un fix todavía. Revisar cuando
+  `pip-audit`/`npm audit` de EPIC-3 deje de reportarlo, o al actualizar
+  `@angular-devkit/build-angular` a una versión mayor.
 
 ## Fuera de alcance
 
