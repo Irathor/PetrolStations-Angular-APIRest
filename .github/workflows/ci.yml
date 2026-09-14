@@ -35,6 +35,40 @@ jobs:
       - run: pytest
         working-directory: backend
 
+  dependency-scan-backend:
+    runs-on: ubuntu-latest
+    # Informativo por ahora (EPIC-3): reporta vulnerabilidades conocidas sin
+    # bloquear el build. Arreglarlas es una decisión caso a caso, fuera de
+    # alcance de este job.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install pip-audit
+      - run: pip-audit -r backend/requirements.txt
+      - run: pip-audit -r backend/requirements-dev.txt
+
+  dependency-scan-frontend:
+    runs-on: ubuntu-latest
+    # Informativo por ahora (EPIC-3), igual que dependency-scan-backend.
+    # audit-level=high para no generar ruido por vulnerabilidades moderate/low
+    # típicas de devDependencies (p. ej. tooling de build de Angular).
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm audit --audit-level=high
+
   docker-build:
     runs-on: ubuntu-latest
     steps:
