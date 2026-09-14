@@ -21,6 +21,13 @@ backend/**/__pycache__
 backend/.pytest_cache
 backend/.env
 
+# dbt (artefactos generados, no versionados)
+dbt/target
+dbt/dbt_packages
+dbt/logs
+dbt/package-lock.yml
+dbt/.user.yml
+
 # Claude Code runtime state
 /.claude/
 

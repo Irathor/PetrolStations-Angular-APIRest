@@ -1,0 +1,40 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: gasolineras
+    description: >
+      Landing de la respuesta cruda de la API de Precios de Carburantes del
+      Gobierno (ver backend/app/postgres_client.py, `extract_raw_to_postgres`).
+    tables:
+      - name: raw_stations
+        description: >
+          Una fila por estación por ejecución de ingesta (`run_id`). El
+          payload crudo completo, sin transformar, vive en la columna
+          `payload` (jsonb); `ideess` se extrae también como columna propia
+          para poder indexar/filtrar sin tener que parsear JSON.
+        loaded_at_field: ingested_at
+        freshness:
+          # La ingesta corre una vez al día (ver Settings.ingestion_hour en
+          # backend/app/config.py); estos umbrales dan margen a un misfire
+          # ocasional sin generar ruido, pero avisan si llevamos más de un
+          # día sin datos frescos.
+          warn_after: { count: 30, period: hour }
+          error_after: { count: 48, period: hour }
+        columns:
+          - name: run_id
+            description: Identificador de la ejecución de ingesta que insertó esta fila.
+            tests:
+              - not_null
+          - name: ingested_at
+            description: Marca de tiempo (UTC) en la que se insertó la fila.
+            tests:
+              - not_null
+          - name: ideess
+            description: >
+              IDEESS tal como viene en el payload crudo (texto, sin castear
+              todavía — el cast a integer ocurre en stg_stations).
+          - name: payload
+            description: Payload JSON crudo completo de la estación, tal como lo devuelve la API del Gobierno.
+            tests:
+              - not_null

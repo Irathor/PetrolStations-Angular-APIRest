@@ -1,0 +1,28 @@
+# Profile de dbt para este proyecto. No contiene credenciales: host, usuario,
+# contraseña y nombre de base de datos se leen de las mismas variables de
+# entorno POSTGRES_* que usa el backend (ver docker-compose.yml y
+# ~/.claude/CLAUDE.md, sección "Variables de entorno entre servicios" —
+# POSTGRES_* son compartidas, sin prefijo de servicio).
+#
+# dbt busca este archivo en `~/.dbt/profiles.yml` por defecto. Para no tener
+# que copiarlo a mano, ejecuta los comandos dbt con la variable de entorno
+# DBT_PROFILES_DIR apuntando a esta carpeta, por ejemplo desde `dbt/`:
+#
+#   DBT_PROFILES_DIR=. dbt run
+#   DBT_PROFILES_DIR=. dbt test
+#
+# En local (fuera de docker-compose), exporta también POSTGRES_HOST=localhost
+# (o el valor que corresponda) antes de esos comandos.
+
+gasolineras:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'localhost') }}"
+      port: "{{ env_var('POSTGRES_PORT', '5432') | int }}"
+      user: "{{ env_var('POSTGRES_USER') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD') }}"
+      dbname: "{{ env_var('POSTGRES_DB') }}"
+      schema: gasolineras
+      threads: 4

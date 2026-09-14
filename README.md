@@ -26,6 +26,11 @@ Ninguno de los tres requiere API key.
                          │  ingesta (upsert + poda, ver más abajo)
                          ▼
                  ┌───────────────┐
+                 │Postgres (Docker)│ ◄── raw/staging/marts, transformaciones dbt
+                 └───────┬───────┘
+                         │  mart stations_current
+                         ▼
+                 ┌───────────────┐
                  │  Solr (Docker) │ ◄── consultas de lectura
                  └───────▲───────┘
                          │
@@ -36,6 +41,7 @@ Ninguno de los tres requiere API key.
 
 - **Frontend**: Angular, habla solo con el backend propio (`/api/...`), nunca con Solr directamente.
 - **Backend**: FastAPI + APScheduler. Expone una API REST limpia (GeoJSON) y ejecuta la ingesta diaria programada.
+- **Postgres**: capa de datos relacional (esquema `gasolineras`) con las transformaciones raw → staging → marts gestionadas por dbt (ver ADR-1 en `docs/adr/`); Solr se alimenta del mart final.
 - **Solr**: almacena las gasolineras; se consulta con faceting (provincia/marca) y filtros geoespaciales (radio).
 
 ## Stack
@@ -44,7 +50,7 @@ Ninguno de los tres requiere API key.
 |-----------|------------|
 | Frontend  | Angular 21, PrimeNG 21 (tema Aura), MapLibre GL JS |
 | Backend   | Python 3.12, FastAPI, APScheduler, httpx |
-| Datos     | Apache Solr 9.2 |
+| Datos     | Apache Solr 9.2, Postgres 16 + dbt |
 | Infra     | Docker Compose |
 
 `tsconfig.json` usa `"moduleResolution": "bundler"` + `"module": "preserve"`
@@ -94,6 +100,11 @@ Copiar `backend/.env.example` a `backend/.env` y ajustar si hace falta
 | `INGESTION_HOUR` / `INGESTION_MINUTE` | Hora local del cron diario | `10:00` |
 | `CORS_ORIGINS` | Orígenes permitidos | `["http://localhost:4200"]` |
 | `ADMIN_TOKEN` | Si se define, protege `POST /api/admin/reindex` (cabecera `X-Admin-Token`) | sin definir (endpoint abierto) |
+| `POSTGRES_HOST` | Host de Postgres (capa de datos dbt) | `localhost` |
+| `POSTGRES_PORT` | Puerto de Postgres | `5432` |
+| `POSTGRES_USER` | Usuario de Postgres | `gasolineras` |
+| `POSTGRES_PASSWORD` | Contraseña de Postgres | `gasolineras` |
+| `POSTGRES_DB` | Base de datos de Postgres | `gasolineras` |
 
 ## API del backend
 
@@ -114,6 +125,7 @@ de más — nunca un mapa vacío.
 
 ## Funcionalidades
 
+- **Buscador de lugares** (Photon/OpenStreetMap): escribe una dirección o topónimo, la lista de resultados permite centrar el mapa en el lugar (fly-to) o trazar ruta desde la posición del usuario hasta él directamente, sin pasar por el popup de una gasolinera.
 - **Mapa con clustering nativo de MapLibre GL** (no un marcador DOM por gasolinera — con ~11.500 estaciones eso es lo que colapsaba el navegador en la versión original). Los clusters muestran el nº de gasolineras y el precio medio del combustible seleccionado, en texto blanco y negrita (`text-font: ['Noto Sans Bold']` — hay que fijarlo explícitamente porque el servidor de glifos de OpenFreeMap no sirve el fallback por defecto de MapLibre).
 - **Filtros** por provincia, marca, combustible y rango de precio, combinables entre sí. El combustible elegido determina sobre qué precio filtra, el precio medio de los clusters, y qué gasolinera cuenta como "más barata en ruta".
 - **"Cerca de mí"**: filtra a un radio de 10 km de la posición del usuario (o de Madrid, si no se pudo geolocalizar — ver abajo).

@@ -7,6 +7,16 @@ class Settings(BaseSettings):
     solr_url: str = "http://localhost:8983"
     solr_collection: str = "oilStations"
 
+    # Variables compartidas (sin prefijo, ver ~/.claude/CLAUDE.md) con el
+    # servicio `postgres` de docker-compose.yml. Los defaults coinciden con
+    # los defaults de ese servicio para que `docker compose up` funcione sin
+    # un .env explícito.
+    postgres_host: str = "localhost"
+    postgres_port: int = 5432
+    postgres_user: str = "gasolineras"
+    postgres_password: str = "gasolineras"
+    postgres_db: str = "gasolineras"
+
     gov_api_url: str = (
         "https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes"
         "/PreciosCarburantes/EstacionesTerrestres/"

@@ -1,0 +1,62 @@
+version: 2
+
+models:
+  - name: stg_stations
+    description: >
+      Réplica en SQL de transform_station() (backend/app/ingestion.py):
+      mapeo de campos, casts numéricos y normalización de coma decimal
+      española a punto. Grano: una fila por estación por ejecución de
+      ingesta (mismo grano que la source `raw.raw_stations`) — la
+      deduplicación a "última foto" ocurre en marts.stations_current.
+      Descarta filas sin ideess o sin coordenadas válidas.
+    columns:
+      - name: ideess
+        description: Identificador de la estación (ESS), casteado a integer.
+        tests:
+          - not_null
+      - name: latitud
+        tests:
+          - not_null
+      - name: longitud
+        tests:
+          - not_null
+      - name: precio_gasoleo_a
+        tests:
+          - dbt_utils.accepted_range:
+                min_value: 0
+                max_value: 5
+                inclusive: false
+      - name: precio_gasoleo_b
+        tests:
+          - dbt_utils.accepted_range:
+                min_value: 0
+                max_value: 5
+                inclusive: false
+      - name: precio_gasoleo_premium
+        tests:
+          - dbt_utils.accepted_range:
+                min_value: 0
+                max_value: 5
+                inclusive: false
+      - name: precio_gasolina_95_e5
+        tests:
+          - dbt_utils.accepted_range:
+                min_value: 0
+                max_value: 5
+                inclusive: false
+      - name: precio_gasolina_98_e5
+        tests:
+          - dbt_utils.accepted_range:
+                min_value: 0
+                max_value: 5
+                inclusive: false
+    tests:
+      # ideess no es único en staging a propósito (una fila por estación
+      # *por ejecución*, necesario para el histórico SCD-2 en
+      # fct_station_prices_history): la combinación (run_id, ideess) es la
+      # clave real a este grano. La unicidad de ideess "a secas" se exige
+      # en marts.stations_current, que sí es una fila por estación.
+      - dbt_utils.unique_combination_of_columns:
+            combination_of_columns:
+              - run_id
+              - ideess

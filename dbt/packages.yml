@@ -1,0 +1,4 @@
+packages:
+  # Versión verificada contra hub.getdbt.com el 2026-09-14 (última publicada: 1.4.1).
+  - package: dbt-labs/dbt_utils
+    version: [">=1.4.0", "<2.0.0"]

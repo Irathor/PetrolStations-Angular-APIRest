@@ -5,6 +5,7 @@ import httpx
 
 from .config import settings
 from .dependencies import solr
+from .postgres_client import extract_raw_to_postgres
 from .state import facets_cache, ingestion_status
 
 logger = logging.getLogger("ingestion")
@@ -106,30 +107,53 @@ async def fetch_gov_data() -> list[dict]:
         return payload["ListaEESSPrecio"]
 
 
+async def load_to_solr(docs: list[dict]) -> None:
+    """Sube (upsert) los documentos frescos a Solr."""
+    await solr.add_documents(docs)
+
+
+async def prune_stale_in_solr(new_ids: set[str]) -> int:
+    """Borra de Solr las estaciones que ya no aparecen en el dump del
+    Gobierno. Devuelve cuántas se han eliminado."""
+    existing_ids = await solr.get_all_ids()
+    stale_ids = existing_ids - new_ids
+    await solr.delete_by_ids(list(stale_ids))
+    return len(stale_ids)
+
+
 async def run_ingestion() -> dict:
     """Descarga el dump completo del Gobierno y actualiza Solr sin dejarlo
     nunca vacío: primero se indexan (upsert) los datos frescos y solo
     después se borran las estaciones que ya no aparecen en el Gobierno. Así,
     durante los segundos que dura la ingesta, en el peor caso se ve alguna
-    estación obsoleta de más — nunca un mapa sin datos."""
+    estación obsoleta de más — nunca un mapa sin datos.
+
+    Además (EPIC-1), aterriza el dump crudo en Postgres (`extract_raw_to_postgres`)
+    para que dbt pueda transformarlo. Es aditivo: si Postgres no está
+    disponible, se registra el error pero la ingesta a Solr continúa igual
+    que antes de este cambio — Solr sigue siendo la única dependencia dura
+    de esta función hasta el cutover de EPIC-2."""
 
     try:
         logger.info("Iniciando ingesta de gasolineras desde la API del Gobierno...")
         raw_stations = await fetch_gov_data()
 
+        try:
+            await extract_raw_to_postgres(raw_stations)
+        except Exception:
+            logger.exception(
+                "No se pudo escribir el dump crudo en Postgres; la ingesta a Solr continúa."
+            )
+
         docs = [d for raw in raw_stations if (d := transform_station(raw)) is not None]
         new_ids = {d["id"] for d in docs}
 
-        existing_ids = await solr.get_all_ids()
-
-        await solr.add_documents(docs)
-
-        stale_ids = existing_ids - new_ids
-        await solr.delete_by_ids(list(stale_ids))
+        await load_to_solr(docs)
+        pruned = await prune_stale_in_solr(new_ids)
 
         facets_cache.clear()
 
-        result = {"source_total": len(raw_stations), "indexed": len(docs), "pruned": len(stale_ids)}
+        result = {"source_total": len(raw_stations), "indexed": len(docs), "pruned": pruned}
         ingestion_status.record_success(**result)
         logger.info(
             "Ingesta completada: %s de %s estaciones indexadas, %s obsoletas eliminadas.",

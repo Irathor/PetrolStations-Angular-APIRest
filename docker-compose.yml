@@ -1,4 +1,22 @@
 services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gasolineras}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gasolineras}
+      POSTGRES_DB: ${POSTGRES_DB:-gasolineras}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gasolineras}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   solr:
     image: solr:9.2
     restart: unless-stopped
@@ -22,9 +40,17 @@ services:
       SOLR_URL: http://solr:8983
       SOLR_COLLECTION: oilStations
       CORS_ORIGINS: '["http://localhost:4200"]'
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-gasolineras}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gasolineras}
+      POSTGRES_DB: ${POSTGRES_DB:-gasolineras}
     depends_on:
       solr:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
 
 volumes:
   solr_data:
+  postgres_data:

@@ -1,0 +1,29 @@
+name: "gasolineras"
+version: "1.0.0"
+config-version: 2
+
+# Debe coincidir con el nombre del profile en profiles.yml.
+profile: "gasolineras"
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+seed-paths: ["seeds"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# No se usa +schema personalizado por capa: todo (raw/staging/marts) vive en
+# el único esquema `gasolineras` que crea docker/postgres/init.sql (ver
+# ADR-1). Usar +schema aquí generaría un esquema con sufijo
+# (`<target_schema>_<custom_schema>`) en vez de reemplazarlo, y complicaría
+# la topología sin necesidad real a esta escala de proyecto.
+models:
+  gasolineras:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table

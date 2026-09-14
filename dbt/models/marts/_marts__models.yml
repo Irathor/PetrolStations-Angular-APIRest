@@ -1,0 +1,95 @@
+version: 2
+
+models:
+  - name: stations_current
+    description: >
+      Última foto de cada estación, mismo shape plano que hoy consume Solr.
+      Un registro por ideess.
+    columns:
+      - name: ideess
+        tests:
+          - not_null
+          - unique
+      - name: latitud
+        tests:
+          - not_null
+      - name: longitud
+        tests:
+          - not_null
+      - name: precio_gasoleo_a
+        tests:
+          - dbt_utils.accepted_range:
+                min_value: 0
+                max_value: 5
+                inclusive: false
+      - name: precio_gasoleo_b
+        tests:
+          - dbt_utils.accepted_range:
+                min_value: 0
+                max_value: 5
+                inclusive: false
+      - name: precio_gasoleo_premium
+        tests:
+          - dbt_utils.accepted_range:
+                min_value: 0
+                max_value: 5
+                inclusive: false
+      - name: precio_gasolina_95_e5
+        tests:
+          - dbt_utils.accepted_range:
+                min_value: 0
+                max_value: 5
+                inclusive: false
+      - name: precio_gasolina_98_e5
+        tests:
+          - dbt_utils.accepted_range:
+                min_value: 0
+                max_value: 5
+                inclusive: false
+
+  - name: fct_station_prices_history
+    description: >
+      Histórico de precios por estación tipo SCD-2: una fila por rango de
+      vigencia de un conjunto de precios (valid_from/valid_to, is_current).
+    columns:
+      - name: ideess
+        tests:
+          - not_null
+      - name: valid_from
+        tests:
+          - not_null
+      - name: precio_gasoleo_a
+        tests:
+          - dbt_utils.accepted_range:
+                min_value: 0
+                max_value: 5
+                inclusive: false
+      - name: precio_gasoleo_b
+        tests:
+          - dbt_utils.accepted_range:
+                min_value: 0
+                max_value: 5
+                inclusive: false
+      - name: precio_gasoleo_premium
+        tests:
+          - dbt_utils.accepted_range:
+                min_value: 0
+                max_value: 5
+                inclusive: false
+      - name: precio_gasolina_95_e5
+        tests:
+          - dbt_utils.accepted_range:
+                min_value: 0
+                max_value: 5
+                inclusive: false
+      - name: precio_gasolina_98_e5
+        tests:
+          - dbt_utils.accepted_range:
+                min_value: 0
+                max_value: 5
+                inclusive: false
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+            combination_of_columns:
+              - ideess
+              - valid_from
