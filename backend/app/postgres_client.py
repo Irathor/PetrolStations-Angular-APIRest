@@ -16,11 +16,12 @@ from .config import settings
 logger = logging.getLogger("postgres_client")
 
 # Nota de entorno: psycopg en modo async no soporta el ProactorEventLoop
-# (policy por defecto de asyncio en Windows). El backend real corre siempre
-# dentro de Docker (Linux, ver docker-compose.yml), donde esto no aplica.
-# Si se ejecuta este módulo directamente en una máquina Windows fuera de
-# Docker (p. ej. desde scripts/seed_raw_to_postgres.py), hace falta forzar
-# `asyncio.WindowsSelectorEventLoopPolicy()` antes de llamar a esta función.
+# (policy por defecto de asyncio en Windows). El backend real (y el
+# contenedor de Airflow que llama a esta función desde EPIC-2) corren
+# siempre dentro de Docker (Linux, ver docker-compose.yml), donde esto no
+# aplica. Si se ejecuta este módulo directamente en una máquina Windows
+# fuera de Docker, hace falta forzar `asyncio.WindowsSelectorEventLoopPolicy()`
+# antes de llamar a esta función.
 
 # Tabla de aterrizaje (landing) de dbt: una fila por estación por ejecución
 # de ingesta, con el payload crudo completo en una columna jsonb. dbt la
@@ -46,6 +47,45 @@ INSERT_RAW_ROW_SQL = """
 INSERT INTO gasolineras.raw_stations (run_id, ingested_at, ideess, payload)
 VALUES (%s, %s, %s, %s)
 """
+
+# Historial de ejecuciones del pipeline (EPIC-2, ver ADR-2): una fila por
+# ejecución del DAG `gasolineras_ingestion`. La escribe/actualiza la tarea
+# `record_run_status` del DAG (siempre, incluso si alguna tarea previa
+# falló) y la lee `GET /api/admin/status`.
+CREATE_INGESTION_RUNS_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS gasolineras.ingestion_runs (
+    run_id UUID PRIMARY KEY,
+    started_at TIMESTAMPTZ NOT NULL,
+    finished_at TIMESTAMPTZ,
+    success BOOLEAN NOT NULL,
+    source_total INTEGER,
+    indexed INTEGER,
+    pruned INTEGER,
+    error TEXT
+);
+"""
+
+UPSERT_INGESTION_RUN_SQL = """
+INSERT INTO gasolineras.ingestion_runs
+    (run_id, started_at, finished_at, success, source_total, indexed, pruned, error)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+ON CONFLICT (run_id) DO UPDATE SET
+    finished_at = EXCLUDED.finished_at,
+    success = EXCLUDED.success,
+    source_total = EXCLUDED.source_total,
+    indexed = EXCLUDED.indexed,
+    pruned = EXCLUDED.pruned,
+    error = EXCLUDED.error
+"""
+
+SELECT_LATEST_INGESTION_RUN_SQL = """
+SELECT run_id, started_at, finished_at, success, source_total, indexed, pruned, error
+FROM gasolineras.ingestion_runs
+ORDER BY started_at DESC
+LIMIT 1
+"""
+
+SELECT_STATIONS_CURRENT_SQL = "SELECT * FROM gasolineras.stations_current"
 
 
 def _conninfo() -> str:
@@ -83,3 +123,65 @@ async def extract_raw_to_postgres(raw_stations: list[dict], run_id: str | None =
         len(raw_stations), run_id,
     )
     return run_id
+
+
+async def record_ingestion_run(
+    run_id: str,
+    started_at: datetime,
+    finished_at: datetime | None,
+    success: bool,
+    source_total: int | None = None,
+    indexed: int | None = None,
+    pruned: int | None = None,
+    error: str | None = None,
+) -> None:
+    """Escribe (o actualiza, si ya existe el `run_id`) una fila en
+    `gasolineras.ingestion_runs` con el resultado de una ejecución del DAG
+    `gasolineras_ingestion` (EPIC-2). La llama la tarea `record_run_status`
+    del DAG, siempre, incluso si alguna tarea previa falló."""
+
+    async with await psycopg.AsyncConnection.connect(_conninfo()) as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(CREATE_INGESTION_RUNS_TABLE_SQL)
+            await cur.execute(
+                UPSERT_INGESTION_RUN_SQL,
+                (run_id, started_at, finished_at, success, source_total, indexed, pruned, error),
+            )
+        await conn.commit()
+
+    logger.info(
+        "Registrada ejecución de ingesta run_id=%s success=%s en gasolineras.ingestion_runs.",
+        run_id, success,
+    )
+
+
+async def fetch_latest_ingestion_run() -> dict | None:
+    """Devuelve la fila más reciente de `gasolineras.ingestion_runs`, o
+    `None` si todavía no se ha ejecutado nunca el pipeline. La usa
+    `GET /api/admin/status` (EPIC-2)."""
+
+    columns = ["run_id", "started_at", "finished_at", "success", "source_total", "indexed", "pruned", "error"]
+
+    async with await psycopg.AsyncConnection.connect(_conninfo()) as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(CREATE_INGESTION_RUNS_TABLE_SQL)
+            await cur.execute(SELECT_LATEST_INGESTION_RUN_SQL)
+            row = await cur.fetchone()
+
+    if row is None:
+        return None
+    return dict(zip(columns, row))
+
+
+async def fetch_stations_current() -> list[dict]:
+    """Lee el mart `gasolineras.stations_current` (columnas en snake_case,
+    ver `dbt/models/marts/stations_current.sql`) para que la tarea
+    `load_to_solr` del DAG pueda remapearlas al formato de Solr (EPIC-2)."""
+
+    async with await psycopg.AsyncConnection.connect(_conninfo()) as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(SELECT_STATIONS_CURRENT_SQL)
+            columns = [desc.name for desc in cur.description]
+            rows = await cur.fetchall()
+
+    return [dict(zip(columns, row)) for row in rows]

@@ -45,11 +45,68 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-gasolineras}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gasolineras}
       POSTGRES_DB: ${POSTGRES_DB:-gasolineras}
+      AIRFLOW_BASE_URL: http://airflow:8080
+      AIRFLOW_API_USERNAME: ${AIRFLOW_API_USERNAME:-admin}
+      AIRFLOW_API_PASSWORD: ${AIRFLOW_API_PASSWORD:-admin}
     depends_on:
       solr:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      airflow:
+        condition: service_healthy
+
+  airflow:
+    build: ./airflow
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      # Standalone: sin base de datos de metadatos separada, comparte la
+      # instancia Postgres del proyecto pero aislada al esquema `airflow`
+      # (creado en docker/postgres/init.sql) vía search_path de sesión —
+      # AIRFLOW__DATABASE__SQL_ALCHEMY_SCHEMA existe como opción de config
+      # pero no lo consume ningún código de Airflow 2.10.4 (verificado
+      # contra el código fuente), así que no basta por sí solo.
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "postgresql+psycopg2://${POSTGRES_USER:-gasolineras}:${POSTGRES_PASSWORD:-gasolineras}@postgres:5432/${POSTGRES_DB:-gasolineras}?options=-csearch_path%3Dairflow"
+      # Basic auth en la REST API (por defecto Airflow solo acepta sesión de
+      # navegador) para que el backend pueda llamarla de forma predecible.
+      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
+      _AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_API_USERNAME:-admin}
+      _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_API_PASSWORD:-admin}
+      # Consumida por el on_failure_callback del DAG (ver ADR-3); opcional,
+      # sin definir el callback se limita a loggear el fallo.
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+      # El DAG importa app.postgres_client (ver volumen ./backend abajo),
+      # que lee estas mismas variables vía Settings — sin prefijo, son
+      # compartidas con el servicio postgres/backend.
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-gasolineras}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gasolineras}
+      POSTGRES_DB: ${POSTGRES_DB:-gasolineras}
+      SOLR_URL: http://solr:8983
+      SOLR_COLLECTION: oilStations
+      PYTHONPATH: /opt/backend
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./dbt:/opt/dbt
+      # Solo lectura: el DAG reutiliza app.ingestion/app.postgres_client del
+      # backend en vez de duplicar esa lógica (ver PYTHONPATH abajo).
+      - ./backend:/opt/backend:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      solr:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
 
 volumes:
   solr_data:

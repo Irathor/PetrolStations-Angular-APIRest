@@ -22,9 +22,13 @@ class Settings(BaseSettings):
         "/PreciosCarburantes/EstacionesTerrestres/"
     )
 
-    # Hora local del contenedor a la que se ejecuta la ingesta diaria.
-    ingestion_hour: int = 10
-    ingestion_minute: int = 0
+    # Orquestación de la ingesta (EPIC-2, ver ADR-2): Airflow standalone,
+    # expuesto en el servicio `airflow` de docker-compose.yml. Variables
+    # compartidas por un único consumidor (este backend), sin prefijo propio
+    # porque coinciden 1:1 con el nombre del servicio/API que describen.
+    airflow_base_url: str = "http://localhost:8080"
+    airflow_api_username: str = "admin"
+    airflow_api_password: str = "admin"
 
     cors_origins: list[str] = ["http://localhost:4200"]
 

@@ -1,6 +1,7 @@
-"""Tests de los pasos discretos de run_ingestion() (extract/load/prune),
-decompuestos como parte de EPIC-1. No repite los tests de transform_station
-ya cubiertos en test_ingestion.py."""
+"""Tests de los pasos discretos de ingestion.py (load_to_solr/prune_stale_in_solr),
+que ahora invoca directamente el DAG `gasolineras_ingestion` (EPIC-2) en vez
+de la antigua run_ingestion() monolítica. No repite los tests de
+transform_station ya cubiertos en test_ingestion.py."""
 
 from unittest.mock import AsyncMock, patch
 
@@ -26,28 +27,59 @@ async def test_prune_stale_in_solr_deletes_ids_missing_from_new_set():
     assert set(delete_by_ids.await_args.args[0]) == {"3"}
 
 
-async def test_run_ingestion_continues_when_postgres_extraction_fails():
-    """La landing en Postgres es aditiva (EPIC-1): si falla, la ingesta a
-    Solr debe completarse igual que antes de este cambio."""
+def test_mart_row_to_solr_doc_maps_snake_case_columns():
+    row = {
+        "ideess": 4375,
+        "id_municipio": 52,
+        "id_provincia": 2,
+        "id_ccaa": 7,
+        "latitud": 39.211417,
+        "longitud": -1.539167,
+        "estacion": "Nº 10.935",
+        "provincia": "ALBACETE",
+        "municipio": None,
+        "localidad": None,
+        "direccion": None,
+        "horario": None,
+        "margen": None,
+        "remision": None,
+        "cp": None,
+        "tipo_venta": None,
+        "bioetanol": None,
+        "ester_metilico": None,
+        "precio_gasoleo_a": 1.749,
+        "precio_gasoleo_b": None,
+        "precio_gasoleo_premium": None,
+        "precio_gasolina_95_e5": None,
+        "precio_gasolina_98_e5": None,
+    }
 
-    raw_stations = [
-        {
-            "IDEESS": "4375",
-            "Latitud": "39,211417",
-            "Longitud (WGS84)": "-1,539167",
-        }
+    doc = ingestion.mart_row_to_solr_doc(row)
+
+    assert doc is not None
+    assert doc["id"] == "4375"
+    assert doc["IDEESS"] == 4375
+    assert doc["Latitud"] == 39.211417
+    assert doc["location"] == "39.211417,-1.539167"
+    assert doc["Estacion"] == "Nº 10.935"
+    assert doc["Provincia"] == "ALBACETE"
+    assert doc["Precio_Gasoleo_A"] == 1.749
+    # Los None no deben acabar como campos nulos en el documento de Solr.
+    assert "Precio_Gasoleo_Premium" not in doc
+    assert "Municipio" not in doc
+
+
+def test_mart_row_to_solr_doc_returns_none_without_coordinates():
+    assert ingestion.mart_row_to_solr_doc({"ideess": 1, "latitud": None, "longitud": -1.5}) is None
+
+
+def test_mart_rows_to_solr_docs_skips_invalid_rows():
+    rows = [
+        {"ideess": 1, "latitud": 39.0, "longitud": -1.0},
+        {"ideess": None, "latitud": 39.0, "longitud": -1.0},
     ]
 
-    with patch.object(ingestion, "fetch_gov_data", new=AsyncMock(return_value=raw_stations)), \
-        patch.object(
-            ingestion, "extract_raw_to_postgres", new=AsyncMock(side_effect=RuntimeError("sin conexión"))
-        ), \
-        patch.object(ingestion, "load_to_solr", new=AsyncMock()) as load_to_solr, \
-        patch.object(ingestion, "prune_stale_in_solr", new=AsyncMock(return_value=0)) as prune_stale_in_solr:
-        result = await ingestion.run_ingestion()
+    docs = ingestion.mart_rows_to_solr_docs(rows)
 
-    assert result["source_total"] == 1
-    assert result["indexed"] == 1
-    assert result["pruned"] == 0
-    load_to_solr.assert_awaited_once()
-    prune_stale_in_solr.assert_awaited_once()
+    assert len(docs) == 1
+    assert docs[0]["id"] == "1"

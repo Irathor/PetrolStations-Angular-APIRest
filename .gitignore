@@ -21,6 +21,10 @@ backend/**/__pycache__
 backend/.pytest_cache
 backend/.env
 
+# Airflow (artefactos generados, no versionados)
+airflow/dags/__pycache__
+airflow/logs
+
 # dbt (artefactos generados, no versionados)
 dbt/target
 dbt/dbt_packages

@@ -17,9 +17,17 @@ async def get_facets():
     """Listas de provincias y estaciones disponibles, para poblar los filtros.
     Siempre sobre el dataset completo (no se filtran entre sí).
 
-    El dataset solo cambia una vez al día (la ingesta programada), así que
-    se cachea en memoria y se invalida justo cuando una ingesta termina
-    (ver ingestion.run_ingestion), en vez de recalcular el facet en cada carga."""
+    El dataset solo cambia una vez al día (la ingesta orquestada por Airflow,
+    ver EPIC-2), así que se cachea en memoria.
+
+    NOTA (EPIC-2): antes de EPIC-2, `run_ingestion()` corría en este mismo
+    proceso y podía invalidar esta caché directamente al terminar. Ahora la
+    ingesta corre en el contenedor de Airflow, un proceso separado que no
+    comparte memoria con el backend, así que esa invalidación automática ya
+    no ocurre. De momento la caché solo se invalida al reiniciar el backend;
+    queda anotado como fast-follow en docs/BACKLOG.md (p. ej. un TTL corto,
+    o que el DAG llame a un endpoint interno de invalidación) en vez de
+    resolverlo aquí sin que el usuario lo priorice."""
 
     if facets_cache.value is not None:
         return FacetsResponse(**facets_cache.value)

@@ -15,10 +15,10 @@ sources:
           para poder indexar/filtrar sin tener que parsear JSON.
         loaded_at_field: ingested_at
         freshness:
-          # La ingesta corre una vez al día (ver Settings.ingestion_hour en
-          # backend/app/config.py); estos umbrales dan margen a un misfire
-          # ocasional sin generar ruido, pero avisan si llevamos más de un
-          # día sin datos frescos.
+          # La ingesta corre una vez al día (DAG gasolineras_ingestion en
+          # Airflow, programado a las 10:00, ver airflow/dags/); estos
+          # umbrales dan margen a un misfire ocasional sin generar ruido,
+          # pero avisan si llevamos más de un día sin datos frescos.
           warn_after: { count: 30, period: hour }
           error_after: { count: 48, period: hour }
         columns:

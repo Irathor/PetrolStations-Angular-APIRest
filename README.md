@@ -19,11 +19,12 @@ Ninguno de los tres requiere API key.
 ## Arquitectura
 
 ```
-                    10:00 diario
+                Airflow: DAG gasolineras_ingestion, 10:00 diario
+             (extract_raw → dbt_run → dbt_test → load_to_solr → poda)
                          │
                          ▼
               API del Gobierno (gasolineras)
-                         │  ingesta (upsert + poda, ver más abajo)
+                         │
                          ▼
                  ┌───────────────┐
                  │Postgres (Docker)│ ◄── raw/staging/marts, transformaciones dbt
@@ -39,9 +40,10 @@ Ninguno de los tres requiere API key.
                  └───────────────┘
 ```
 
-- **Frontend**: Angular, habla solo con el backend propio (`/api/...`), nunca con Solr directamente.
-- **Backend**: FastAPI + APScheduler. Expone una API REST limpia (GeoJSON) y ejecuta la ingesta diaria programada.
-- **Postgres**: capa de datos relacional (esquema `gasolineras`) con las transformaciones raw → staging → marts gestionadas por dbt (ver ADR-1 en `docs/adr/`); Solr se alimenta del mart final.
+- **Frontend**: Angular, habla solo con el backend propio (`/api/...`), nunca con Solr ni Airflow directamente.
+- **Backend**: FastAPI. Expone una API REST limpia (GeoJSON); `POST /api/admin/reindex` dispara el DAG de Airflow vía su REST API, `GET /api/admin/status` lee el resultado de la última ejecución desde Postgres — ver "La ingesta diaria" más abajo.
+- **Airflow**: orquesta el pipeline de ingesta (extract → dbt run → dbt test → load a Solr → poda → registro del resultado) en modo standalone (`LocalExecutor`, un único contenedor) — ver ADR-2 en `docs/adr/`.
+- **Postgres**: capa de datos relacional (esquema `gasolineras`) con las transformaciones raw → staging → marts gestionadas por dbt (ver ADR-1 en `docs/adr/`); Solr se alimenta del mart final, y el historial de ejecuciones de la ingesta (`gasolineras.ingestion_runs`) también vive aquí (ver ADR-2). También aloja los metadatos de Airflow, en el esquema `airflow`.
 - **Solr**: almacena las gasolineras; se consulta con faceting (provincia/marca) y filtros geoespaciales (radio).
 
 ## Stack
@@ -49,8 +51,9 @@ Ninguno de los tres requiere API key.
 | Capa      | Tecnología |
 |-----------|------------|
 | Frontend  | Angular 21, PrimeNG 21 (tema Aura), MapLibre GL JS |
-| Backend   | Python 3.12, FastAPI, APScheduler, httpx |
+| Backend   | Python 3.12, FastAPI, httpx, psycopg |
 | Datos     | Apache Solr 9.2, Postgres 16 + dbt |
+| Orquestación | Apache Airflow 2.10.4 (standalone, `LocalExecutor`) |
 | Infra     | Docker Compose |
 
 `tsconfig.json` usa `"moduleResolution": "bundler"` + `"module": "preserve"`
@@ -66,12 +69,17 @@ bundler, no `tsc`, quien decida cómo tratar los `import`/`export`) y tiene
 docker compose up -d --build
 ```
 
-Esto levanta Solr y el backend. Solr arranca **vacío**: la primera vez hay que
-disparar la ingesta a mano (después, el cron diario se encarga solo):
+Esto levanta Postgres, Solr, Airflow y el backend. Solr arranca **vacío**: la
+primera vez hay que disparar la ingesta a mano (después, el DAG diario de
+Airflow se encarga solo):
 
 ```bash
 curl -X POST http://localhost:8001/api/admin/reindex
 ```
+
+Airflow expone su UI en `http://localhost:8080` (usuario/contraseña por
+defecto `admin`/`admin` en desarrollo — cambiar `AIRFLOW_API_USERNAME`/
+`AIRFLOW_API_PASSWORD` en el `.env` antes de cualquier despliegue real).
 
 El frontend no está en el `docker-compose.yml` (se sirve en modo desarrollo con
 `ng serve`, ver abajo); si se quiere servir también desde Docker en producción,
@@ -97,7 +105,6 @@ Copiar `backend/.env.example` a `backend/.env` y ajustar si hace falta
 |---|---|---|
 | `SOLR_URL` | URL base de Solr | `http://localhost:8983` |
 | `SOLR_COLLECTION` | Nombre del core/colección | `oilStations` |
-| `INGESTION_HOUR` / `INGESTION_MINUTE` | Hora local del cron diario | `10:00` |
 | `CORS_ORIGINS` | Orígenes permitidos | `["http://localhost:4200"]` |
 | `ADMIN_TOKEN` | Si se define, protege `POST /api/admin/reindex` (cabecera `X-Admin-Token`) | sin definir (endpoint abierto) |
 | `POSTGRES_HOST` | Host de Postgres (capa de datos dbt) | `localhost` |
@@ -105,23 +112,37 @@ Copiar `backend/.env.example` a `backend/.env` y ajustar si hace falta
 | `POSTGRES_USER` | Usuario de Postgres | `gasolineras` |
 | `POSTGRES_PASSWORD` | Contraseña de Postgres | `gasolineras` |
 | `POSTGRES_DB` | Base de datos de Postgres | `gasolineras` |
+| `AIRFLOW_BASE_URL` | URL base de la REST API de Airflow, usada por `POST /api/admin/reindex` | `http://localhost:8080` |
+| `AIRFLOW_API_USERNAME` | Usuario para autenticarse contra la REST API de Airflow | `admin` |
+| `AIRFLOW_API_PASSWORD` | Contraseña para autenticarse contra la REST API de Airflow | `admin` |
+| `ALERT_WEBHOOK_URL` | Opcional. Webhook entrante (Discord o Slack) al que el DAG de Airflow notifica si el pipeline falla | sin definir (solo se loggea el fallo) |
 
 ## API del backend
 
 - `GET /api/oil-stations` — gasolineras en GeoJSON. Parámetros opcionales: `provincias`, `estaciones` (repetibles), `precio_min`, `precio_max`, `combustible` (`gasoleo_a` | `gasoleo_premium` | `gasolina_95` | `gasolina_98`, por defecto `gasoleo_a` — sobre qué precio aplica el rango), y `lat`+`lon`+`radius_km` para buscar por radio (además ordena por cercanía).
 - `GET /api/facets` — listas de provincias/marcas para los filtros (cacheado en memoria, se invalida solo tras cada ingesta).
 - `GET /api/health` — healthcheck.
-- `GET /api/admin/status` — cuándo fue la última ingesta con éxito, cuántas gasolineras se indexaron/podaron, y el último error si lo hay.
-- `POST /api/admin/reindex` — dispara la ingesta manualmente (protegido por `ADMIN_TOKEN` si está configurado).
+- `GET /api/admin/status` — resultado de la última ejecución del pipeline de ingesta (éxito/fallo, cuántas gasolineras se indexaron/podaron, y el último error si lo hay), leído de `gasolineras.ingestion_runs` en Postgres.
+- `POST /api/admin/reindex` — encola una ejecución manual del DAG de Airflow (protegido por `ADMIN_TOKEN` si está configurado). Como Airflow ejecuta el DAG de forma asíncrona, la respuesta solo confirma que se ha lanzado (`dag_run_id` + `status`); el resultado real se consulta después con `GET /api/admin/status`.
 
 ## La ingesta diaria
 
-Corre dentro del propio proceso del backend (APScheduler), a la hora fijada por
-`INGESTION_HOUR`/`INGESTION_MINUTE`. **Nunca borra todo el índice de golpe**:
-primero indexa (upsert, por `id`) los datos frescos de la API del Gobierno, y
-solo después borra de Solr las gasolineras que ya no aparecen. Así, en el peor
-caso, durante los segundos que dura la ingesta se ve alguna estación obsoleta
-de más — nunca un mapa vacío.
+La orquesta Airflow (modo standalone, un único contenedor) con el DAG
+`gasolineras_ingestion` (`airflow/dags/gasolineras_ingestion.py`), programado
+a las 10:00 todos los días — ver ADR-2 en `docs/adr/` para el detalle
+completo. Sus tareas, encadenadas:
+
+1. **`extract_raw`** — descarga el dump de la API del Gobierno y lo aterriza tal cual en `gasolineras.raw_stations` (Postgres).
+2. **`dbt_run`** — ejecuta los modelos dbt (`staging` → `marts`), incluido el mart `stations_current`.
+3. **`dbt_test`** — corre los tests de calidad de dbt (rangos de precio, nulos, unicidad...). Si falla, la cadena se detiene aquí: los datos malos nunca llegan a Solr.
+4. **`load_to_solr`** — lee `stations_current` de Postgres y hace upsert en Solr.
+5. **`prune_stale_in_solr`** — borra de Solr las gasolineras que ya no aparecen en la fuente. **Nunca deja el índice vacío**: al ir después del upsert, en el peor caso se ve alguna estación obsoleta de más durante unos segundos, nunca un mapa sin datos.
+6. **`record_run_status`** — se ejecuta siempre (incluso si alguna tarea anterior falló) y escribe el resultado en `gasolineras.ingestion_runs`, que consulta `GET /api/admin/status`.
+
+Reintentos con backoff exponencial a nivel de DAG (3 intentos, 5 min inicial,
+hasta 30 min máximo). Si el DAG falla, se registra siempre un log `ERROR`
+identificable, y opcionalmente se notifica a un webhook entrante (Discord o
+Slack) si se configura `ALERT_WEBHOOK_URL` — ver ADR-3 en `docs/adr/`.
 
 ## Funcionalidades
 
@@ -201,8 +222,11 @@ backend, y comprueba que `docker compose build` funciona — en cada push/PR.
 - La ingesta evita el mapa vacío con upsert+poda, pero sigue siendo un único
   proceso: si se necesitara más robustez (varias réplicas, SolrCloud), lo
   correcto sería un alias de colección con swap atómico en vez de upsert.
-- No hay alertas activas si la ingesta diaria falla (solo queda en los logs y
-  en `GET /api/admin/status`) — para eso haría falta un canal de notificación
-  (email, Slack...) que el proyecto no tiene configurado.
+- El caché en memoria de `GET /api/facets` ya no se invalida automáticamente
+  al terminar una ingesta (antes de EPIC-2, `run_ingestion()` corría en el
+  mismo proceso que el backend y podía limpiarlo directamente; ahora la
+  ingesta corre en el contenedor de Airflow, un proceso separado). Hoy solo
+  se invalida al reiniciar el backend — ver nota en
+  `backend/app/routers/facets.py` y `docs/BACKLOG.md`.
 - El responsive es funcional pero básico (la barra de filtros se apila); no
   se ha rediseñado pensando en móvil de cero.

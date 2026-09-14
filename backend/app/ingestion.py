@@ -5,8 +5,6 @@ import httpx
 
 from .config import settings
 from .dependencies import solr
-from .postgres_client import extract_raw_to_postgres
-from .state import facets_cache, ingestion_status
 
 logger = logging.getLogger("ingestion")
 
@@ -33,6 +31,32 @@ PRICE_FIELDS = {
     "Precio Gasoleo Premium": "Precio_Gasoleo_Premium",
     "Precio Gasolina 95 E5": "Precio_Gasolina_95_E5",
     "Precio Gasolina 98 E5": "Precio_Gasolina_98_E5",
+}
+
+# Mapeo del mart de dbt `gasolineras.stations_current` (columnas snake_case,
+# ver dbt/models/marts/stations_current.sql) a los nombres de campo que
+# espera Solr. Es el inverso de FIELD_MAP/PRICE_FIELDS de arriba — EPIC-1 dejó
+# este remapeo pendiente explícitamente para el loader de EPIC-2 (ver cierre
+# de EPIC-1 en docs/epics/).
+MART_FIELD_MAP = {
+    "estacion": "Estacion",
+    "provincia": "Provincia",
+    "municipio": "Municipio",
+    "localidad": "Localidad",
+    "direccion": "Direccion",
+    "horario": "Horario",
+    "margen": "Margen",
+    "remision": "Remision",
+    "cp": "C.P.",
+    "tipo_venta": "Tipo_Venta",
+}
+
+MART_PRICE_FIELDS = {
+    "precio_gasoleo_a": "Precio_Gasoleo_A",
+    "precio_gasoleo_b": "Precio_Gasoleo_B",
+    "precio_gasoleo_premium": "Precio_Gasoleo_Premium",
+    "precio_gasolina_95_e5": "Precio_Gasolina_95_E5",
+    "precio_gasolina_98_e5": "Precio_Gasolina_98_E5",
 }
 
 
@@ -97,6 +121,54 @@ def transform_station(raw: dict) -> dict | None:
     return doc
 
 
+def mart_row_to_solr_doc(row: dict) -> dict | None:
+    """Convierte una fila del mart `gasolineras.stations_current` (columnas
+    snake_case) en un documento de Solr, usando MART_FIELD_MAP/MART_PRICE_FIELDS.
+    Análogo a `transform_station`, pero partiendo de Postgres en vez del dump
+    crudo del Gobierno (EPIC-2, tarea `load_to_solr` del DAG)."""
+
+    ideess = row.get("ideess")
+    lat = row.get("latitud")
+    lon = row.get("longitud")
+
+    if ideess is None or lat is None or lon is None:
+        return None
+
+    lat = float(lat)
+    lon = float(lon)
+
+    doc: dict = {
+        "id": str(ideess),
+        "IDEESS": int(ideess),
+        "IDMunicipio": row.get("id_municipio"),
+        "IDProvincia": row.get("id_provincia"),
+        "IDCCAA": row.get("id_ccaa"),
+        "Latitud": lat,
+        "Longitud": lon,
+        "location": f"{lat},{lon}",
+        "BioEtanol": float(v) if (v := row.get("bioetanol")) is not None else None,
+        "Ester_met_lico": float(v) if (v := row.get("ester_metilico")) is not None else None,
+    }
+
+    for mart_col, solr_key in MART_FIELD_MAP.items():
+        value = row.get(mart_col)
+        if value:
+            doc[solr_key] = value
+
+    for mart_col, solr_key in MART_PRICE_FIELDS.items():
+        value = row.get(mart_col)
+        if value is not None:
+            doc[solr_key] = float(value)
+
+    return {k: v for k, v in doc.items() if v is not None}
+
+
+def mart_rows_to_solr_docs(rows: list[dict]) -> list[dict]:
+    """Aplica `mart_row_to_solr_doc` a todas las filas del mart, descartando
+    las que no tengan id/coordenadas válidas (mismo criterio que `transform_station`)."""
+    return [d for row in rows if (d := mart_row_to_solr_doc(row)) is not None]
+
+
 async def fetch_gov_data() -> list[dict]:
     async with httpx.AsyncClient(timeout=60) as client:
         resp = await client.get(settings.gov_api_url)
@@ -121,46 +193,14 @@ async def prune_stale_in_solr(new_ids: set[str]) -> int:
     return len(stale_ids)
 
 
-async def run_ingestion() -> dict:
-    """Descarga el dump completo del Gobierno y actualiza Solr sin dejarlo
-    nunca vacío: primero se indexan (upsert) los datos frescos y solo
-    después se borran las estaciones que ya no aparecen en el Gobierno. Así,
-    durante los segundos que dura la ingesta, en el peor caso se ve alguna
-    estación obsoleta de más — nunca un mapa sin datos.
-
-    Además (EPIC-1), aterriza el dump crudo en Postgres (`extract_raw_to_postgres`)
-    para que dbt pueda transformarlo. Es aditivo: si Postgres no está
-    disponible, se registra el error pero la ingesta a Solr continúa igual
-    que antes de este cambio — Solr sigue siendo la única dependencia dura
-    de esta función hasta el cutover de EPIC-2."""
-
-    try:
-        logger.info("Iniciando ingesta de gasolineras desde la API del Gobierno...")
-        raw_stations = await fetch_gov_data()
-
-        try:
-            await extract_raw_to_postgres(raw_stations)
-        except Exception:
-            logger.exception(
-                "No se pudo escribir el dump crudo en Postgres; la ingesta a Solr continúa."
-            )
-
-        docs = [d for raw in raw_stations if (d := transform_station(raw)) is not None]
-        new_ids = {d["id"] for d in docs}
-
-        await load_to_solr(docs)
-        pruned = await prune_stale_in_solr(new_ids)
-
-        facets_cache.clear()
-
-        result = {"source_total": len(raw_stations), "indexed": len(docs), "pruned": pruned}
-        ingestion_status.record_success(**result)
-        logger.info(
-            "Ingesta completada: %s de %s estaciones indexadas, %s obsoletas eliminadas.",
-            result["indexed"], result["source_total"], result["pruned"],
-        )
-        return result
-    except Exception as exc:
-        ingestion_status.record_error(str(exc))
-        logger.exception("La ingesta de gasolineras ha fallado.")
-        raise
+# Nota (EPIC-2): la antigua `run_ingestion()` (fetch -> transform_station ->
+# load_to_solr -> prune, con Postgres como escritura aditiva/best-effort) se
+# retira aquí. La orquesta ahora el DAG `gasolineras_ingestion`
+# (airflow/dags/gasolineras_ingestion.py), que encadena extract_raw -> dbt_run
+# -> dbt_test -> load_to_solr (desde el mart, vía mart_rows_to_solr_docs) ->
+# prune_stale_in_solr -> record_run_status. Mantener ambas rutas vivas a la
+# vez habría dejado un segundo camino de ingesta que salta los tests de dbt
+# — justo lo que ADR-2 (Airflow reemplaza a APScheduler) busca evitar.
+# `transform_station`/`FIELD_MAP`/`PRICE_FIELDS` se conservan (con sus tests)
+# porque documentan el mapeo original campo-a-campo desde el dump del
+# Gobierno; no se invocan desde ningún camino de producción tras este cutover.

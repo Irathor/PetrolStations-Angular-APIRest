@@ -9,7 +9,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .dependencies import solr
 from .routers import admin, facets, oil_stations
-from .scheduler import scheduler, start_scheduler
 from .schema import ensure_schema
 
 logging.basicConfig(level=logging.INFO)
@@ -17,10 +16,12 @@ logging.basicConfig(level=logging.INFO)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # (EPIC-2) La ingesta ya no la dispara un scheduler dentro de este
+    # proceso (APScheduler): la orquesta el DAG `gasolineras_ingestion` en
+    # Airflow, ver ADR-2. Este backend solo asegura el schema de Solr al
+    # arrancar y expone /api/admin/reindex + /api/admin/status.
     await ensure_schema(settings.solr_url, settings.solr_collection)
-    start_scheduler()
     yield
-    scheduler.shutdown()
     await solr.aclose()
 
 

@@ -12,15 +12,24 @@ aquí, solo se referencian. Pendientes de que el usuario decida cuándo
 implementarlas.
 
 - `docs/epics/EPIC-1-capa-datos-postgres-dbt.md` — Capa de datos Postgres +
-  dbt. Estado: Propuesta.
+  dbt. Estado: Completada.
 - `docs/epics/EPIC-2-orquestacion-airflow.md` — Orquestación con Airflow.
-  Estado: Propuesta. Bloqueada por EPIC-1.
+  Estado: Completada.
 - `docs/epics/EPIC-3-escaneo-dependencias-ci.md` — Escaneo de dependencias en
   CI. Estado: Propuesta.
 
 ## Niebla
 
-(Sin ítems por ahora.)
+- **Invalidación de la caché de `/api/facets` tras la ingesta** — desde
+  EPIC-2, la ingesta corre en el proceso de Airflow (contenedor separado del
+  backend), así que la invalidación automática que antes ocurría al terminar
+  `run_ingestion()` en el mismo proceso ya no dispara: hoy la caché de
+  facetas solo se limpia al reiniciar el backend. La dirección es clara (algo
+  tiene que invalidarla desde fuera del proceso), pero la solución concreta
+  no está afilada todavía — un TTL corto en la caché, o que el DAG llame a un
+  endpoint interno de invalidación al terminar `load_to_solr`, son las dos
+  opciones más obvias, sin decidir cuál encaja mejor. Descubierto y anotado
+  durante el cierre de EPIC-2 (2026-09-14).
 
 ## Fuera de alcance
 
