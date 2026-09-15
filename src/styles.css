@@ -1,3 +1,15 @@
+/* Tokens de color de la app (paleta oscura del mapa). Formaliza los hex
+   que antes estaban repetidos sueltos en varios archivos: úsalos siempre
+   vía var(--...) en vez de escribir un hex nuevo. */
+:root{
+    --color-bg-surface: #17212f;
+    --color-accent: #75bef8;
+    --color-favorite: #fdd835;
+    --color-primary: #1976d2;
+    --color-primary-hover: #2196f3;
+    --color-primary-active: #0d47a1;
+}
+
 *{
     font-family: 'Roboto', sans-serif;
 }
@@ -9,20 +21,20 @@
     margin-top: 8px;
     width: 100%;
     padding: 4px 0;
-    border: 1px solid #1976d2;
+    border: 1px solid var(--color-primary);
     border-radius: 3px;
-    background-color: #1976d2;
+    background-color: var(--color-primary);
     color: #ffffff;
     cursor: pointer;
     transition: background-color 0.15s, border-color 0.15s;
 }
 
 .directions-btn:hover{
-    background-color: #2196f3;
-    border-color: #2196f3;
+    background-color: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
 }
 
 .directions-btn:active{
-    background-color: #0d47a1;
-    border-color: #0d47a1;
+    background-color: var(--color-primary-active);
+    border-color: var(--color-primary-active);
 }

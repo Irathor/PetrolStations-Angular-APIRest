@@ -1,13 +1,49 @@
-.carga{
+/* Estas reglas reemplazan a las clases de Bootstrap (alert, list-group,
+   btn-outline-*) que usaba antes este componente. Al quitar la dependencia
+   del CDN de Bootstrap (ver src/index.html), había que declarar el propio
+   estilo aquí; de paso se adapta la paleta al tema oscuro de la app en vez
+   de mantener los colores claros por defecto de Bootstrap, que no pegaban
+   con el resto de la interfaz. */
+
+.search-loading{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     width: 80%;
-    margin-left: 10%;
+    margin: 0 auto 8px;
+    padding: 8px 12px;
     text-align: center;
+    color: rgba(255, 255, 255, 0.87);
 }
 
-.pointer{
+.results-list{
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+}
+
+.results-item{
     cursor: pointer;
-    background-color: #17212f;
+    background-color: var(--color-bg-surface);
     color: rgba(255, 255, 255, 0.87);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 8px 12px;
+    text-align: left;
+    transition: background-color 0.15s;
+}
+
+.results-item:first-child{
+    border-top: none;
+}
+
+.results-item:hover{
+    background-color: rgba(117, 190, 248, 0.12);
+}
+
+.results-item.active{
+    background-color: rgba(117, 190, 248, 0.2);
+    color: #ffffff;
 }
 
 .titulo{
@@ -20,6 +56,29 @@ p{
     font-size: 10px;
 }
 
-button{
+.go-btn{
     float: right;
+    padding: 3px 10px;
+    font-size: 0.8rem;
+    border-radius: 3px;
+    border: 1px solid var(--color-accent);
+    background-color: transparent;
+    color: var(--color-accent);
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.go-btn:hover{
+    background-color: var(--color-accent);
+    color: var(--color-bg-surface);
+}
+
+.go-btn-active{
+    border-color: #ffffff;
+    color: #ffffff;
+}
+
+.go-btn-active:hover{
+    background-color: #ffffff;
+    color: var(--color-bg-surface);
 }

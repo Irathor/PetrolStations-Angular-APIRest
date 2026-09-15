@@ -8,19 +8,20 @@
 <!--En el momento en el que se encuentre geolocalización se cargará el resto de componentes por el else anterior-->
 
 @if (locationReady && usingDefaultLocation) {
-  <div class="default-location-notice">
-    No se pudo obtener tu ubicación: mostrando Madrid como referencia.
+  <div class="default-location-notice" role="status" aria-live="polite">
+    <i class="pi pi-map-marker" aria-hidden="true"></i>
+    <span>No se pudo obtener tu ubicación: mostrando Madrid como referencia.</span>
   </div>
 }
 
 @if (isLoadingOilStations) {
-  <div class="oil-stations-status">
+  <div class="oil-stations-status" role="status" aria-live="polite">
     <p-progressSpinner styleClass="status-spinner" strokeWidth="6" ariaLabel="Cargando gasolineras" />
     <span>Cargando gasolineras...</span>
   </div>
 } @else if (noResults) {
-  <div class="oil-stations-status">
-    <i class="pi pi-info-circle"></i>
+  <div class="oil-stations-status" role="status" aria-live="polite">
+    <i class="pi pi-info-circle" aria-hidden="true"></i>
     <span>No se han encontrado gasolineras con estos filtros.</span>
   </div>
 }
@@ -29,7 +30,7 @@
   <p-menubar class="menu">
     <ng-template pTemplate="start">
       <div class="filtros">
-        <img src="./../../../../assets/gasoil.png" alt="logo" height="40" class="mr-2" />
+        <img src="./../../../../assets/fuelfinder-logo-full.png" alt="FuelFinder" height="64" class="mr-2" />
         <div>
           <p-multiSelect class="selectMenu"
             [options]="provincias"

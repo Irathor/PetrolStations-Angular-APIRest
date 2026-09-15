@@ -1,8 +1,18 @@
 .card{
+    /* Antes estas reglas (display, border completo, border-radius,
+       background-clip) venían gratis de la clase ".card" de Bootstrap.
+       Al quitar la dependencia a Bootstrap hay que declararlas aquí de
+       forma explícita para que el aspecto no cambie. */
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
     width: 80%;
     margin: 0 auto;
     margin-top: 10px;
-    border-color: #75bef8;
+    background-clip: border-box;
+    border: 1px solid var(--color-accent);
+    border-radius: 0.25rem;
     /* Sin esto, el fondo blanco por defecto del div se ve a través del menú
        cuando este se vuelve translúcido (en vez del mapa, que está detrás). */
     background-color: transparent;
@@ -14,9 +24,9 @@ app-search-results {
     top: 100%;
     right: 20px;
     z-index: 1;
-    background-color: #17212f;
+    background-color: var(--color-bg-surface);
     border-radius: 3px;
-    border: 1px solid #75bef8;
+    border: 1px solid var(--color-accent);
     width: 220px;
     text-align: center;
     padding-top: 10px;
@@ -33,7 +43,7 @@ app-search-results {
 
 .search-input:focus{
     outline: none; /* Desactiva el borde predeterminado */
-    box-shadow: 0 0 0 0.2rem #75bef8; /* Agrega un sombreado azul */
+    box-shadow: 0 0 0 0.2rem var(--color-accent); /* Agrega un sombreado azul */
     border-radius: 2px;
 }
 
@@ -48,6 +58,7 @@ app-search-results {
 
 .filtros{
     display: flex;
+    align-items: center;
 }
 
 .map-actions{
@@ -84,7 +95,7 @@ app-search-results {
 }
 
 .icon-action-btn.active{
-    color: #75bef8;
+    color: var(--color-accent);
     background-color: rgba(117, 190, 248, 0.15);
 }
 
@@ -96,8 +107,8 @@ app-search-results {
     height: 14px;
     padding: 0 3px;
     border-radius: 7px;
-    background-color: #fdd835;
-    color: #17212f;
+    background-color: var(--color-favorite);
+    color: var(--color-bg-surface);
     font-size: 0.65rem;
     line-height: 14px;
     font-weight: bold;
@@ -119,12 +130,16 @@ app-search-results {
     left: 50%;
     transform: translateX(-50%);
     z-index: 1;
-    background-color: #17212f;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: var(--color-bg-surface);
     color: rgba(255, 255, 255, 0.85);
-    border: 1px solid #75bef8;
-    border-radius: 3px;
-    padding: 6px 14px;
+    border: 1px solid var(--color-accent);
+    border-radius: 4px;
+    padding: 8px 16px;
     font-size: 0.85rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
     animation: fadeOutLocationNotice 0.8s ease-in 5s forwards;
 }
 
@@ -136,11 +151,11 @@ app-search-results {
    se vuelve un 80% transparente cuando el ratón lleva 3s fuera de él, y
    recupera su aspecto sólido en 0,5s en cuanto el ratón vuelve a pasar por
    encima. La animación va en .card (no en .menu): el borde azul que se ve
-   es el de .card (heredado de la clase "card" de Bootstrap), no el de
-   .menu/p-menubar, así que aplicarlo solo a .menu dejaba ese borde siempre
-   sólido. Aplicándolo en .card entero se desvanece de una sola vez, sin
-   apilar dos opacidades (una en .card y otra en .menu, que se multiplicarían
-   y dejarían el resultado demasiado transparente).*/
+   es el de .card (declarado explícitamente arriba, ya no heredado de
+   Bootstrap), no el de .menu/p-menubar, así que aplicarlo solo a .menu
+   dejaba ese borde siempre sólido. Aplicándolo en .card entero se desvanece
+   de una sola vez, sin apilar dos opacidades (una en .card y otra en .menu,
+   que se multiplicarían y dejarían el resultado demasiado transparente).*/
 .card:not(:hover){
     animation: menuFadeToTranslucent 0.5s ease forwards;
     animation-delay: 3s;
@@ -163,12 +178,19 @@ app-search-results {
     display: flex;
     align-items: center;
     gap: 8px;
-    background-color: #17212f;
+    background-color: var(--color-bg-surface);
     color: rgba(255, 255, 255, 0.85);
-    border: 1px solid #75bef8;
-    border-radius: 3px;
-    padding: 6px 14px;
+    border: 1px solid var(--color-accent);
+    border-radius: 4px;
+    padding: 8px 16px;
     font-size: 0.85rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    animation: statusFadeIn 0.25s ease-out;
+}
+
+@keyframes statusFadeIn{
+    from{ opacity: 0; transform: translateY(-4px); }
+    to{ opacity: 1; transform: translateY(0); }
 }
 
 .status-spinner{
@@ -210,5 +232,7 @@ app-search-results {
         transform: none;
         margin: 6px auto;
         width: fit-content;
+        max-width: 90vw;
+        text-align: center;
     }
 }

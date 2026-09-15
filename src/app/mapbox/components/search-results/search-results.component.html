@@ -1,26 +1,27 @@
 @if (isLoadingPlaces) {
   <div
-    class="alert alert-primary mt-2 text-center carga">
-    <i class="pi pi-spinner pi-spin"></i>
-    <span> Cargando</span>
+    class="search-loading"
+    role="status" aria-live="polite">
+    <i class="pi pi-spinner pi-spin" aria-hidden="true"></i>
+    <span>Cargando</span>
   </div>
 }
 
 @if (places.length > 0) {
   <ul
-    class="list-group mt-2">
+    class="results-list">
     @for (place of places; track place) {
       <li
-        class="list-group-item list-group-item-action pointer"
+        class="results-item"
         [class.active]="place.id === selectedId"
         (click)="flyTo(place)">
         <span class="titulo">{{ place.text | titlecase }}</span>
         <p>
           {{ place.place_name }}
         </p>
-        <button class="btn btn-sm"
-          (click)="getDirections(place)"
-        [ngClass]="(place.id === selectedId) ? 'btn-outline-light' : 'btn-outline-primary' ">Ir a</button>
+        <button class="go-btn"
+          [class.go-btn-active]="place.id === selectedId"
+          (click)="getDirections(place)">Ir a</button>
       </li>
     }
   </ul>
