@@ -137,6 +137,12 @@ export class MapService {
   // pueda mostrar la distancia sin crear una dependencia circular.
   private userLocationProvider?: () => [number, number] | undefined;
 
+  // Igual que directionsRequestHandler: el popup es DOM manual y no puede
+  // abrir un p-dialog de Angular por sí mismo, así que delega en un callback
+  // registrado por MapViewComponent (setPriceHistoryHandler), que sí puede
+  // pilotar el diálogo de evolución de precios.
+  private priceHistoryRequestHandler?: (stationId: string) => void;
+
   private lastRouteBounds?: LngLatBounds;
   private readonly hasActiveRouteSubject = new BehaviorSubject<boolean>(false);
   /** Emite true/false según haya o no una ruta dibujada actualmente en el mapa. */
@@ -228,6 +234,10 @@ export class MapService {
 
   setUserLocationProvider(provider: () => [number, number] | undefined){
     this.userLocationProvider = provider;
+  }
+
+  setPriceHistoryHandler(handler: (stationId: string) => void){
+    this.priceHistoryRequestHandler = handler;
   }
 
   /** Estaciones favoritas (entre las últimas recibidas de la API) con su distancia al usuario, si se conoce. */
@@ -641,6 +651,19 @@ export class MapService {
       applyCompareState(this.comparisonService.isSelected(props.id));
     });
     container.appendChild(compareBtn);
+
+    if(this.priceHistoryRequestHandler){
+      const historyBtn = document.createElement('button');
+      historyBtn.type = 'button';
+      historyBtn.textContent = 'Ver evolución de precios';
+      historyBtn.className = 'station-popup__history-btn';
+      historyBtn.setAttribute('aria-label', `Ver evolución de precios de ${ props.Estacion ?? 'esta gasolinera' }`);
+      historyBtn.addEventListener('click', () => {
+        this.priceHistoryRequestHandler?.(props.id);
+        this.stationPopup?.remove();
+      });
+      container.appendChild(historyBtn);
+    }
 
     if(this.directionsRequestHandler){
       const directionsBtn = document.createElement('button');

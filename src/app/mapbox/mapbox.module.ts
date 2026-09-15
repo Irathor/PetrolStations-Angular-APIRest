@@ -14,6 +14,7 @@ import { FavoritesPanelComponent } from './components/favorites-panel/favorites-
 import { BottomNavComponent } from './components/bottom-nav/bottom-nav.component';
 import { RoutePlannerComponent } from './components/route-planner/route-planner.component';
 import { ComparisonDialogComponent } from './components/comparison-dialog/comparison-dialog.component';
+import { PriceHistoryDialogComponent } from './components/price-history-dialog/price-history-dialog.component';
 
 
 
@@ -30,7 +31,8 @@ import { ComparisonDialogComponent } from './components/comparison-dialog/compar
     FavoritesPanelComponent,
     BottomNavComponent,
     RoutePlannerComponent,
-    ComparisonDialogComponent
+    ComparisonDialogComponent,
+    PriceHistoryDialogComponent
   ],
   imports: [
     CommonModule,

@@ -146,6 +146,16 @@
   </div>
 </p-drawer>
 
+<p-dialog header="Evolución de precios"
+  [(visible)]="priceHistoryVisible"
+  [modal]="true"
+  [dismissableMask]="true"
+  [style]="{ width: '40rem', maxWidth: '95vw' }">
+  @if (priceHistoryVisible) {
+    <app-price-history-dialog [stationId]="priceHistoryStationId" [selectedCombustible]="selectedCombustible" />
+  }
+</p-dialog>
+
 <app-bottom-nav [hidden]="!isMobileViewport"
   [nearMeActive]="nearMeActive"
   [favoritesOnly]="favoritesOnly"

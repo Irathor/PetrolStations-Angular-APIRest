@@ -1,0 +1,47 @@
+.price-history{
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.price-history__fuel-select{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 16rem;
+}
+
+.price-history__fuel-select label{
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.87);
+}
+
+.price-history__status{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 24px 0;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.price-history__error,
+.price-history__empty{
+    margin: 0;
+    padding: 12px 4px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.87);
+    text-align: center;
+}
+
+.price-history__summary{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.87);
+}
+
+.price-history__chart{
+    width: 100%;
+}

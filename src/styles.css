@@ -177,6 +177,23 @@
     color: var(--color-bg-surface);
 }
 
+.station-popup__history-btn{
+    margin-top: 8px;
+    width: 100%;
+    padding: 4px 0;
+    border: 1px solid var(--color-accent);
+    border-radius: 3px;
+    background-color: transparent;
+    color: var(--color-accent);
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.station-popup__history-btn:hover{
+    background-color: var(--color-accent);
+    color: var(--color-bg-surface);
+}
+
 .directions-btn{
     margin-top: 8px;
     width: 100%;

@@ -53,6 +53,12 @@ export class MapViewComponent implements OnInit, OnDestroy {
   public isMobileViewport: boolean = false;
   public hasActiveRoute: boolean = false;
 
+  // Diálogo "Ver evolución de precios", abierto desde el popup de una
+  // estación (DOM manual, no puede montar componentes Angular): MapService
+  // dispara priceHistoryStationId vía el callback registrado más abajo.
+  public priceHistoryVisible: boolean = false;
+  public priceHistoryStationId?: string;
+
   private favoritesSubscription?: Subscription;
   private hasActiveRouteSubscription?: Subscription;
 
@@ -85,6 +91,14 @@ export class MapViewComponent implements OnInit, OnDestroy {
     this.hasActiveRouteSubscription = this.mapService.hasActiveRoute$.subscribe(
       active => this.hasActiveRoute = active
     );
+
+    // El popup de estación es DOM manual (MapLibre, fuera del árbol de
+    // Angular) y no puede abrir un p-dialog por sí mismo: delega en este
+    // callback, mismo patrón que setDirectionsHandler/setUserLocationProvider.
+    this.mapService.setPriceHistoryHandler(stationId => {
+      this.priceHistoryStationId = stationId;
+      this.priceHistoryVisible = true;
+    });
 
     // Listas para los desplegables de filtro (siempre sobre el dataset completo).
     this.geolocationsService.getFacets().subscribe(facets => {

@@ -19,6 +19,7 @@ import { BadgeModule } from 'primeng/badge';
 import { SelectButtonModule } from 'primeng/selectbutton';
 import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
+import { ChartModule } from 'primeng/chart';
 
 @NgModule({
   declarations: [],
@@ -42,7 +43,8 @@ import { InputNumberModule } from 'primeng/inputnumber';
     BadgeModule,
     SelectButtonModule,
     DialogModule,
-    InputNumberModule
+    InputNumberModule,
+    ChartModule
   ]
 })
 export class PrimeNGModule { }

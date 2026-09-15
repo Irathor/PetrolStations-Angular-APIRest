@@ -22,7 +22,7 @@ implementarlas.
 - `docs/epics/EPIC-5-planificador-comparador.md` — Planificador de ruta
   avanzado y comparador de gasolineras. Estado: Completada.
 - `docs/epics/EPIC-6-historico-precios-estacion.md` — Histórico de precios
-  visible en la ficha de estación. Estado: Propuesta.
+  visible en la ficha de estación. Estado: Completada.
 - `docs/epics/EPIC-7-frontend-docker-nginx.md` — Frontend en Docker (nginx)
   para producción. Estado: Propuesta.
 
@@ -55,6 +55,20 @@ implementarlas.
   Funcionalmente correcto (las coordenadas sí se capturan bien, la ruta se
   calcula bien), es solo una mejora de claridad visual pendiente de afinar.
   Descubierto en la verificación de cierre de EPIC-5 (2026-09-15).
+- **Interpolación sin escapar en queries de Solr** — `_build_fq` en
+  `backend/app/routers/oil_stations.py` (preexistente) construye cláusulas
+  como `f'Provincia:"{p}"'`/`f'Estacion:"{e}"'` con valores del usuario
+  interpolados directamente, sin escapar comillas internas; el endpoint
+  nuevo de EPIC-6 (`_station_exists`) sigue el mismo patrón para no meter
+  un estilo distinto en el mismo fichero. Revisado en el `security-review`
+  de cierre de EPIC-6: el impacto real hoy es bajo (como mucho, forzar que
+  `_station_exists` devuelva un falso positivo — el endpoint nunca
+  devuelve el contenido de los documentos de Solr, solo cuenta si hay
+  alguno), así que no bloquea el cierre — pero es un patrón que se repite
+  en más de un sitio y merece un fix transversal (escapar comillas, o
+  cambiar a una forma de construir queries de Solr que parametrice de
+  verdad) cuando se retome esa zona del código. Anotado en la verificación
+  de cierre de EPIC-6 (2026-09-15).
 
 ## Vigilancia (sin acción posible por ahora)
 

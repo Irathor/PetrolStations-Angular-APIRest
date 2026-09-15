@@ -87,6 +87,18 @@ LIMIT 1
 
 SELECT_STATIONS_CURRENT_SQL = "SELECT * FROM gasolineras.stations_current"
 
+# Histórico de precios (SCD-2) de una estación concreta, ver
+# dbt/models/marts/fct_station_prices_history.sql (EPIC-6). Una fila por
+# versión de precios, ordenadas por inicio de vigencia ascendente para que
+# el router pueda devolverlas tal cual al frontend.
+SELECT_PRICE_HISTORY_SQL = """
+SELECT ideess, precio_gasoleo_a, precio_gasoleo_b, precio_gasoleo_premium,
+       precio_gasolina_95_e5, precio_gasolina_98_e5, valid_from, valid_to, is_current
+FROM gasolineras.fct_station_prices_history
+WHERE ideess = %s
+ORDER BY valid_from ASC
+"""
+
 
 def _conninfo() -> str:
     return (
@@ -181,6 +193,22 @@ async def fetch_stations_current() -> list[dict]:
     async with await psycopg.AsyncConnection.connect(_conninfo()) as conn:
         async with conn.cursor() as cur:
             await cur.execute(SELECT_STATIONS_CURRENT_SQL)
+            columns = [desc.name for desc in cur.description]
+            rows = await cur.fetchall()
+
+    return [dict(zip(columns, row)) for row in rows]
+
+
+async def fetch_price_history(ideess: str) -> list[dict]:
+    """Lee el histórico de versiones de precios (SCD-2) de una estación desde
+    el mart `gasolineras.fct_station_prices_history` (ver EPIC-6). Devuelve
+    lista vacía si la estación no tiene histórico todavía (alta reciente) —
+    la comprobación de si la estación existe la hace el router contra Solr,
+    no esta función."""
+
+    async with await psycopg.AsyncConnection.connect(_conninfo()) as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(SELECT_PRICE_HISTORY_SQL, (ideess,))
             columns = [desc.name for desc in cur.description]
             rows = await cur.fetchall()
 

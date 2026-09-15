@@ -1,0 +1,69 @@
+<div class="price-history">
+
+  <div class="price-history__fuel-select">
+    <label id="priceHistoryFuelLabel" for="priceHistoryFuel">Combustible</label>
+    <p-select id="priceHistoryFuel"
+      [options]="fuelOptions"
+      optionLabel="label"
+      optionValue="key"
+      [(ngModel)]="localFuel"
+      (onChange)="onLocalFuelChange()"
+      ariaLabelledBy="priceHistoryFuelLabel" />
+  </div>
+
+  @if (isLoading) {
+    <div class="price-history__status" role="status" aria-live="polite">
+      <p-progressSpinner styleClass="price-history__spinner" strokeWidth="6" ariaLabel="Cargando histórico de precios" />
+      <span>Cargando histórico...</span>
+    </div>
+  } @else if (errorMessage) {
+    <p class="price-history__error" role="alert">{{ errorMessage }}</p>
+  } @else if (!hasAnyHistory) {
+    <p class="price-history__empty" role="status">Todavía no hay histórico de precios para esta estación.</p>
+  } @else if (!hasDataForFuel) {
+    <p class="price-history__empty" role="status">
+      No hay datos de {{ fuelLabel }} en el histórico de esta estación. Prueba con otro combustible.
+    </p>
+  } @else {
+
+    <div class="price-history__summary" role="status" aria-live="polite">
+      @if (currentPoint) {
+        <span><strong>Precio actual:</strong> {{ currentPoint.price | currency:'EUR' }}</span>
+      }
+      @if (firstPoint && daysSinceFirstPoint != null) {
+        <span><strong>Hace {{ daysSinceFirstPoint }} días:</strong> {{ firstPoint.price | currency:'EUR' }}</span>
+      }
+      @if (minPrice != null && maxPrice != null) {
+        <span><strong>Mínimo / máximo del periodo:</strong> {{ minPrice | currency:'EUR' }} / {{ maxPrice | currency:'EUR' }}</span>
+      }
+    </div>
+
+    <div class="price-history__chart">
+      <p-chart type="line"
+        [data]="chartData"
+        [options]="chartOptions"
+        [style]="{ height: '18rem' }"
+        [ariaLabel]="'Gráfico de evolución del precio de ' + fuelLabel" />
+    </div>
+
+    <table class="sr-only">
+      <caption>Evolución del precio de {{ fuelLabel }} en esta estación</caption>
+      <thead>
+        <tr>
+          <th scope="col">Fecha</th>
+          <th scope="col">Precio</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (point of points; track point.date) {
+          <tr>
+            <td>{{ point.date | date:'dd/MM/yyyy' }}</td>
+            <td>{{ point.price | currency:'EUR' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+  }
+
+</div>
