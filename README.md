@@ -1,8 +1,9 @@
-# Gasolineras de España
+# Gasolineras de España (FuelFinder)
 
-Aplicación web que muestra en un mapa las gasolineras de España y sus precios, con
-filtros por provincia, marca, precio y radio de búsqueda, favoritos, y cálculo de
-la gasolinera más barata en una ruta.
+Aplicación web (nombre de marca: **FuelFinder**) que muestra en un mapa las
+gasolineras de España y sus precios, con filtros por provincia, marca, precio
+y radio de búsqueda, favoritos, planificador de ruta con ahorro estimado,
+comparador de gasolineras e histórico de precios por estación.
 
 Los datos vienen de la
 [API REST de gasolineras del Ministerio para la Transición Ecológica](https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/help),
@@ -36,11 +37,12 @@ Ninguno de los tres requiere API key.
                  └───────▲───────┘
                          │
                  ┌───────┴───────┐
-                 │ Backend FastAPI│ ◄── Angular (HTTP, vía proxy /api)
-                 └───────────────┘
+                 │ Backend FastAPI│ ◄── Frontend Angular (HTTP, vía proxy /api)
+                 └───────────────┘        servido por nginx en Docker (EPIC-7)
+                                           o por `ng serve` en desarrollo
 ```
 
-- **Frontend**: Angular, habla solo con el backend propio (`/api/...`), nunca con Solr ni Airflow directamente.
+- **Frontend**: Angular, servido en producción por nginx dentro de Docker (`docker/frontend/nginx.conf`, ver EPIC-7) o por `ng serve` en desarrollo; en ambos casos habla solo con el backend propio (`/api/...`), nunca con Solr ni Airflow directamente.
 - **Backend**: FastAPI. Expone una API REST limpia (GeoJSON); `POST /api/admin/reindex` dispara el DAG de Airflow vía su REST API, `GET /api/admin/status` lee el resultado de la última ejecución desde Postgres — ver "La ingesta diaria" más abajo.
 - **Airflow**: orquesta el pipeline de ingesta (extract → dbt run → dbt test → load a Solr → poda → registro del resultado) en modo standalone (`LocalExecutor`, un único contenedor) — ver ADR-2 en `docs/adr/`.
 - **Postgres**: capa de datos relacional (esquema `gasolineras`) con las transformaciones raw → staging → marts gestionadas por dbt (ver ADR-1 en `docs/adr/`); Solr se alimenta del mart final, y el historial de ejecuciones de la ingesta (`gasolineras.ingestion_runs`) también vive aquí (ver ADR-2). También aloja los metadatos de Airflow, en el esquema `airflow`.
@@ -88,6 +90,10 @@ El frontend queda disponible en `http://localhost:4200` (configurable con
 internamente (`docker/frontend/nginx.conf`), igual que hace `ng serve` en
 desarrollo — el navegador nunca necesita CORS ni hablar directo con Solr.
 
+Con esto, `docker compose up -d --build` ya deja la app entera funcionando
+(EPIC-7) — **ya no hace falta `ng serve` para tener todo operativo**; solo
+se usa en desarrollo del frontend, ver más abajo.
+
 ### Frontend (desarrollo, sin Docker)
 
 ```bash
@@ -130,6 +136,7 @@ incluye las compartidas de arriba):
 ## API del backend
 
 - `GET /api/oil-stations` — gasolineras en GeoJSON. Parámetros opcionales: `provincias`, `estaciones` (repetibles), `precio_min`, `precio_max`, `combustible` (`gasoleo_a` | `gasoleo_premium` | `gasolina_95` | `gasolina_98`, por defecto `gasoleo_a` — sobre qué precio aplica el rango), y `lat`+`lon`+`radius_km` para buscar por radio (además ordena por cercanía).
+- `GET /api/oil-stations/{id}/price-history` — serie temporal de precios por combustible de una estación, leída de `gasolineras.fct_station_prices_history` (Postgres). Devuelve 200 con `history: []` si la estación existe pero no tiene histórico todavía (alta reciente), y 404 si el `id` no existe.
 - `GET /api/facets` — listas de provincias/marcas para los filtros (cacheado en memoria, se invalida solo tras cada ingesta).
 - `GET /api/health` — healthcheck.
 - `GET /api/admin/status` — resultado de la última ejecución del pipeline de ingesta (éxito/fallo, cuántas gasolineras se indexaron/podaron, y el último error si lo hay), leído de `gasolineras.ingestion_runs` en Postgres.
@@ -156,19 +163,56 @@ Slack) si se configura `ALERT_WEBHOOK_URL` — ver ADR-3 en `docs/adr/`.
 
 ## Funcionalidades
 
+### Navegación (rediseñada en EPIC-4)
+
+- **App bar superior** (`p-menubar`): logo+marca FuelFinder, buscador de lugares (Photon) centrado, selector de combustible, botón de centrar mapa, toggle de tema (mapa oscuro/normal) y botón de menú.
+- **Menú flotante** (se abre/cierra, no permanente) con accesos a Explorar, Cerca de mí, Favoritas y Filtros.
+- **Filtros en `p-drawer`** (provincia/marca/combustible/precio), a la derecha en desktop y desde abajo en móvil, con badge indicando el nº de filtros activos — sustituye a la antigua barra de filtros siempre visible.
+- **Bottom navigation** de 4 accesos (Explorar / Cerca de mí / Favoritas / Ruta) en viewport móvil, en vez de la barra de filtros apilada.
+- **Card de popup de estación**: nombre, dirección, precio destacado, badge de abierta/cerrada, distancia, botón "Cómo llegar", y botones "+ Comparar" y "Ver evolución de precios".
+
+### Funciones sobre el mapa
+
 - **Buscador de lugares** (Photon/OpenStreetMap): escribe una dirección o topónimo, la lista de resultados permite centrar el mapa en el lugar (fly-to) o trazar ruta desde la posición del usuario hasta él directamente, sin pasar por el popup de una gasolinera.
 - **Mapa con clustering nativo de MapLibre GL** (no un marcador DOM por gasolinera — con ~11.500 estaciones eso es lo que colapsaba el navegador en la versión original). Los clusters muestran el nº de gasolineras y el precio medio del combustible seleccionado, en texto blanco y negrita (`text-font: ['Noto Sans Bold']` — hay que fijarlo explícitamente porque el servidor de glifos de OpenFreeMap no sirve el fallback por defecto de MapLibre).
 - **Filtros** por provincia, marca, combustible y rango de precio, combinables entre sí. El combustible elegido determina sobre qué precio filtra, el precio medio de los clusters, y qué gasolinera cuenta como "más barata en ruta".
-- **"Cerca de mí"**: filtra a un radio de 10 km de la posición del usuario (o de Madrid, si no se pudo geolocalizar — ver abajo).
-- **Favoritas**: se marcan desde el popup de cada gasolinera (★), guardadas en `localStorage` del navegador (no requieren backend ni login). El botón "Favoritas" del menú filtra el mapa para mostrar solo las guardadas, con un contador.
-- **Gasolinera más barata en ruta**: al trazar una ruta (OSRM, botón "Cómo llegar" del popup, con estilo propio en `.directions-btn` de `src/styles.css`) se resalta la gasolinera más barata (según el combustible seleccionado) a menos de 2 km del trayecto.
+- **"Cerca de mí"**: filtra por radio configurable (2/5/10/25/50 km) alrededor de la posición del usuario (o de Madrid, si no se pudo geolocalizar — ver abajo).
+- **Favoritas**: se marcan desde el popup de cada gasolinera (★), guardadas en `localStorage` del navegador (no requieren backend ni login — ver "Limitaciones conocidas"). El panel de Favoritas (menú flotante) muestra, por cada guardada, nombre, precio del combustible seleccionado, distancia y si está abierta/cerrada; click centra el mapa en ella.
 - **Horario**: el popup de cada gasolinera muestra si está abierta ahora mismo, interpretando el campo `Horario` de la API del Gobierno (cubre los formatos "24h" y "incluye un rango, mismo horario todos los días"; si el formato es más complejo se muestra el texto tal cual).
 - **Fallback de geolocalización**: si se deniega el permiso o el navegador no la soporta, la app centra en Madrid en vez de quedarse bloqueada en la pantalla de carga, con un aviso visible que se desvanece solo a los 5 segundos (`fadeOutLocationNotice` en `map-view.component.css`) para no quedar estorbando de forma permanente.
 - **Filtros recordados**: provincia, marca, precio y combustible se guardan en `localStorage` y se restauran en la siguiente visita.
 - **Feedback de carga y de "sin resultados"**: spinner mientras se pide al backend, aviso si una combinación de filtros no devuelve ninguna gasolinera.
-- **Menú superior discreto**: si el ratón lleva 3 segundos fuera del menú de filtros, este se vuelve un 80% transparente (opacidad 0,2) para dejar más protagonismo al mapa, y recupera su opacidad completa en 0,5s en cuanto el ratón vuelve a pasar por encima (`.card` en `map-view.component.css`, con `:hover` + `animation-delay`).
-- **Mapa oscuro o normal**: un selector junto a "Favoritas" alterna entre el estilo oscuro de OpenFreeMap y su estilo "liberty" (colores clásicos de mapa), sin perder las gasolineras ya cargadas ni la posición del mapa. La elección se recuerda en `localStorage`.
-- **Responsive**: la barra de filtros se adapta (se apila) en pantallas estrechas.
+- **Mapa oscuro o normal**: alterna entre el estilo oscuro de OpenFreeMap y su estilo "liberty" (colores clásicos de mapa), sin perder las gasolineras ya cargadas ni la posición del mapa. La elección se recuerda en `localStorage`.
+- **Responsive mobile-first**: app bar, drawer y bottom nav se adaptan a móvil (ver "Navegación" arriba).
+
+### Planificador de ruta avanzado (EPIC-5)
+
+Introduce origen, destino (buscador Photon), combustible y desvío máximo
+admitido (configurable, antes fijo a 2 km); opcionalmente la capacidad del
+depósito. Encuentra la gasolinera más barata en el trayecto y estima el
+ahorro real: precio × litros menos el coste estimado del combustible extra
+consumido en el desvío (asumiendo un consumo de referencia de ~7 L/100 km),
+con aviso explícito de que es una estimación, no el consumo real del
+vehículo.
+
+### Comparador de gasolineras (EPIC-5)
+
+Selecciona entre 2 y 4 estaciones (desde el popup con "+ Comparar" o desde
+Favoritas) y muestra una tabla comparativa con precio de los 4 combustibles,
+distancia, horario (abierta/cerrada) y coste de viaje cuando aplica,
+destacando la opción más barata.
+
+### Histórico de precios (EPIC-6)
+
+El botón "Ver evolución de precios" del popup de estación abre un diálogo
+con un gráfico de línea (Chart.js vía `p-chart` de PrimeNG) de la evolución
+del precio por combustible, más un resumen textual accesible (precio actual,
+precio hace N días, mínimo/máximo). Si la estación no tiene histórico
+disponible (alta reciente), se indica de forma clara en vez de mostrar un
+gráfico vacío o un error. Los datos vienen de
+`GET /api/oil-stations/{id}/price-history`, que lee del mart
+`gasolineras.fct_station_prices_history` (Postgres, histórico SCD-2 desde
+EPIC-1).
 
 ## Rendimiento
 
@@ -238,5 +282,13 @@ backend, y comprueba que `docker compose build` funciona — en cada push/PR.
   ingesta corre en el contenedor de Airflow, un proceso separado). Hoy solo
   se invalida al reiniciar el backend — ver nota en
   `backend/app/routers/facets.py` y `docs/BACKLOG.md`.
-- El responsive es funcional pero básico (la barra de filtros se apila); no
-  se ha rediseñado pensando en móvil de cero.
+- **Sin sistema de cuentas/login**: favoritos y comparación son anónimos vía
+  `localStorage`, no se sincronizan entre dispositivos ni permiten alertas de
+  precio personalizadas — decisión explícita para este rediseño, ver
+  `docs/BACKLOG.md` (sección Niebla).
+- **Sin capas de mapa de pago** (satélite/tráfico): no existe alternativa
+  gratuita sin token compatible con MapLibre+OpenFreeMap — ver
+  `docs/BACKLOG.md` (sección Fuera de alcance).
+
+Más detalle de decisiones y fast-follows pendientes en `docs/BACKLOG.md`,
+las 7 Epics del proyecto en `docs/epics/` y los ADR en `docs/adr/`.
