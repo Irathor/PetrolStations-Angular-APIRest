@@ -17,6 +17,14 @@ implementarlas.
   Estado: Completada.
 - `docs/epics/EPIC-3-escaneo-dependencias-ci.md` — Escaneo de dependencias en
   CI. Estado: Completada.
+- `docs/epics/EPIC-4-nueva-shell-navegacion.md` — Nueva shell de navegación
+  (app bar + menú flotante + drawer de filtros). Estado: Propuesta.
+- `docs/epics/EPIC-5-planificador-comparador.md` — Planificador de ruta
+  avanzado y comparador de gasolineras. Estado: Propuesta.
+- `docs/epics/EPIC-6-historico-precios-estacion.md` — Histórico de precios
+  visible en la ficha de estación. Estado: Propuesta.
+- `docs/epics/EPIC-7-frontend-docker-nginx.md` — Frontend en Docker (nginx)
+  para producción. Estado: Propuesta.
 
 ## Niebla
 
@@ -30,6 +38,16 @@ implementarlas.
   endpoint interno de invalidación al terminar `load_to_solr`, son las dos
   opciones más obvias, sin decidir cuál encaja mejor. Descubierto y anotado
   durante el cierre de EPIC-2 (2026-09-14).
+- **Sistema de cuentas/login de usuario** — el mockup original que inspiró
+  el rediseño de frontend (EPIC-4 a EPIC-6) incluía notificaciones y avatar
+  de usuario, pero se descartó explícitamente para esta ronda: los
+  favoritos siguen siendo anónimos vía `localStorage`. Si en el futuro se
+  quiere sincronizar favoritos entre dispositivos o personalizar alertas de
+  precio, ahí es donde entraría cuentas — pero es un cambio de arquitectura
+  real (auth, sesiones, backend de usuarios), no un detalle de UI, así que
+  necesitaría su propio ADR y confirmación explícita del usuario cuando se
+  plantee en firme. Anotado en la ronda de decisión del rediseño de
+  frontend (2026-09-14).
 
 ## Vigilancia (sin acción posible por ahora)
 
@@ -56,3 +74,7 @@ implementarlas.
   en los proyectos más ligeros primero; para este se considera más
   informativo un demo grabado (capturas/GIF de la UI de Airflow + del mapa)
   que uno en vivo.
+- **Capas de mapa de satélite/tráfico** — no existe alternativa gratuita sin
+  token compatible con MapLibre+OpenFreeMap; Esri World Imagery sin key
+  tiene términos de uso ambiguos para producción, se descarta por prudencia.
+  Descartado en la ronda de decisión del rediseño de frontend (2026-09-14).
