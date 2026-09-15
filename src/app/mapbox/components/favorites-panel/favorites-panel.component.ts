@@ -1,7 +1,7 @@
 import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
 import { Subscription } from 'rxjs';
 
-import { FavoritesService, MapService } from '../../services';
+import { FavoritesService, MapService, ComparisonService } from '../../services';
 import { FavoriteStation } from '../../services/map.service';
 import { FUEL_PROPERTY, FuelKey } from '../../interfaces/fuel';
 import { describeSchedule, ScheduleStatus } from '../../utils/schedule';
@@ -37,15 +37,21 @@ export class FavoritesPanelComponent implements OnInit, OnChanges, OnDestroy {
   rows: FavoriteStationRow[] = [];
 
   private changesSubscription?: Subscription;
+  private comparisonSubscription?: Subscription;
 
   constructor(
     private readonly mapService: MapService,
-    private readonly favoritesService: FavoritesService
+    private readonly favoritesService: FavoritesService,
+    private readonly comparisonService: ComparisonService
   ) { }
 
   ngOnInit(): void {
     this.refresh();
     this.changesSubscription = this.favoritesService.changes$.subscribe(() => this.refresh());
+    // Repinta para que el botón "Comparar" de cada fila refleje si esa
+    // estación se ha añadido/quitado de la comparación desde otro sitio
+    // (p.ej. desde el popup del mapa).
+    this.comparisonSubscription = this.comparisonService.changes$.subscribe(() => this.refresh());
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -56,6 +62,26 @@ export class FavoritesPanelComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnDestroy(): void {
     this.changesSubscription?.unsubscribe();
+    this.comparisonSubscription?.unsubscribe();
+  }
+
+  /** id de la fila para la que se acaba de rechazar un intento de añadir a comparar (máximo alcanzado), para el feedback breve del botón. */
+  limitReachedId?: string;
+
+  isSelectedForComparison(id: string): boolean {
+    return this.comparisonService.isSelected(id);
+  }
+
+  onToggleComparison(id: string){
+    const changed = this.comparisonService.toggle(id);
+    if(!changed){
+      this.limitReachedId = id;
+      setTimeout(() => {
+        if(this.limitReachedId === id){
+          this.limitReachedId = undefined;
+        }
+      }, 1500);
+    }
   }
 
   private refresh(){

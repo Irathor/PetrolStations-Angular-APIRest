@@ -1,0 +1,135 @@
+<form class="route-planner" (ngSubmit)="calculate()">
+
+  <div class="route-planner__field">
+    <label for="plannerOrigin">Origen</label>
+    <input type="text"
+      id="plannerOrigin"
+      pInputText
+      class="route-planner__input"
+      autocomplete="off"
+      [ngModel]="originQuery"
+      name="originQuery"
+      (ngModelChange)="originQuery = $event; onOriginQueryChanged($event)" />
+    @if (isSearchingOrigin) {
+      <span class="route-planner__hint" role="status" aria-live="polite">Buscando...</span>
+    }
+    @if (originResults.length > 0) {
+      <ul class="route-planner__results" aria-label="Resultados de origen">
+        @for (place of originResults; track place.id) {
+          <li>
+            <button type="button" class="route-planner__result-item" (click)="selectOrigin(place)">
+              <span class="route-planner__result-title">{{ place.text }}</span>
+              <span class="route-planner__result-subtitle">{{ place.place_name }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+
+  <div class="route-planner__field">
+    <label for="plannerDestination">Destino</label>
+    <input type="text"
+      id="plannerDestination"
+      pInputText
+      class="route-planner__input"
+      autocomplete="off"
+      [ngModel]="destinationQuery"
+      name="destinationQuery"
+      (ngModelChange)="destinationQuery = $event; onDestinationQueryChanged($event)" />
+    @if (isSearchingDestination) {
+      <span class="route-planner__hint" role="status" aria-live="polite">Buscando...</span>
+    }
+    @if (destinationResults.length > 0) {
+      <ul class="route-planner__results" aria-label="Resultados de destino">
+        @for (place of destinationResults; track place.id) {
+          <li>
+            <button type="button" class="route-planner__result-item" (click)="selectDestination(place)">
+              <span class="route-planner__result-title">{{ place.text }}</span>
+              <span class="route-planner__result-subtitle">{{ place.place_name }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+
+  <div class="route-planner__field">
+    <label id="plannerFuelLabel" for="plannerFuel">Combustible</label>
+    <p-select id="plannerFuel"
+      [options]="fuelOptions"
+      optionLabel="label"
+      optionValue="key"
+      [(ngModel)]="selectedFuel"
+      name="selectedFuel"
+      ariaLabelledBy="plannerFuelLabel" />
+  </div>
+
+  <div class="route-planner__field">
+    <label id="plannerDetourLabel">Desvío máximo: {{ maxDetourKm }} km</label>
+    <p-slider
+      [(ngModel)]="maxDetourKm"
+      name="maxDetourKm"
+      [min]="1"
+      [max]="25"
+      [step]="1"
+      ariaLabelledBy="plannerDetourLabel" />
+  </div>
+
+  <div class="route-planner__field">
+    <label for="plannerTank">Capacidad del depósito (litros, opcional)</label>
+    <p-inputNumber id="plannerTank"
+      [(ngModel)]="tankCapacityLiters"
+      name="tankCapacityLiters"
+      [min]="0"
+      [max]="200"
+      suffix=" L"
+      placeholder="Para estimar el ahorro" />
+  </div>
+
+  @if (errorMessage) {
+    <p class="route-planner__error" role="alert">{{ errorMessage }}</p>
+  }
+
+  <button type="submit" class="route-planner__submit" [disabled]="!canCalculate">
+    @if (isCalculating) {
+      <span>Calculando...</span>
+    } @else {
+      <span>Buscar la más barata en ruta</span>
+    }
+  </button>
+
+  @if (result) {
+    <div class="route-planner__result" role="status" aria-live="polite">
+      <h6>{{ result.stationName }}</h6>
+      @if (result.address) {
+        <span class="route-planner__result-address">{{ result.address }}</span>
+      }
+      <div class="route-planner__result-grid">
+        <div>
+          <span class="route-planner__result-label">Precio ({{ result.fuelLabel }})</span>
+          <span class="route-planner__result-value">{{ result.price | currency:'EUR' }}</span>
+        </div>
+        <div>
+          <span class="route-planner__result-label">Desvío</span>
+          <span class="route-planner__result-value">{{ result.detourKm | number:'1.1-1' }} km</span>
+        </div>
+        @if (result.savingsEstimate != null) {
+          <div>
+            <span class="route-planner__result-label">Ahorro estimado</span>
+            <span class="route-planner__result-value"
+              [class.is-negative]="result.savingsEstimate < 0">
+              {{ result.savingsEstimate | currency:'EUR' }}
+            </span>
+          </div>
+        }
+      </div>
+      @if (result.savingsEstimate != null) {
+        <p class="route-planner__disclaimer">
+          Estimado asumiendo un consumo medio de {{ assumedConsumption }} L/100km en el desvío; no es el consumo real de tu vehículo.
+        </p>
+      }
+    </div>
+  }
+
+</form>

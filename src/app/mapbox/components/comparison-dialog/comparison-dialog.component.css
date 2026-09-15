@@ -1,0 +1,115 @@
+.comparison-empty{
+    margin: 0;
+    padding: 12px 4px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.87);
+    text-align: center;
+}
+
+.comparison-tank{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.comparison-tank label{
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.87);
+}
+
+.comparison-table-wrapper{
+    overflow-x: auto;
+}
+
+.comparison-table{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.comparison-table th,
+.comparison-table td{
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    white-space: nowrap;
+}
+
+.comparison-table thead th{
+    vertical-align: top;
+    font-size: 0.9rem;
+}
+
+.comparison-table tbody th{
+    font-weight: normal;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.comparison-table th.is-cheapest{
+    background-color: rgba(102, 187, 106, 0.12);
+}
+
+.comparison-table td.is-cheapest{
+    background-color: rgba(102, 187, 106, 0.12);
+    color: #66bb6a;
+    font-weight: bold;
+}
+
+.comparison-station-header{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.comparison-remove-btn{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 3px;
+}
+
+.comparison-remove-btn:hover,
+.comparison-remove-btn:focus-visible{
+    color: #ef5350;
+    background-color: rgba(239, 83, 80, 0.15);
+}
+
+.comparison-cheapest-badge{
+    display: inline-block;
+    margin-top: 4px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 0.65rem;
+    font-weight: normal;
+    background-color: rgba(102, 187, 106, 0.25);
+    color: #81c784;
+}
+
+.comparison-no-data{
+    opacity: 0.6;
+}
+
+.comparison-schedule-badge{
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.comparison-schedule-badge.is-open{
+    background-color: rgba(102, 187, 106, 0.2);
+    color: #81c784;
+}
+
+.comparison-schedule-badge.is-closed{
+    background-color: rgba(239, 83, 80, 0.2);
+    color: #ef5350;
+}

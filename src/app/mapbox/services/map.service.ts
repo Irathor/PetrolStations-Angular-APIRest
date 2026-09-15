@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, map } from 'rxjs';
 
 import {
   GeoJSONSource,
@@ -20,11 +20,25 @@ import { FUEL_LABEL, FUEL_PROPERTY, FuelKey } from '../interfaces/fuel';
 import { describeSchedule } from '../utils/schedule';
 import { haversineKm } from '../utils/geo';
 import { FavoritesService } from './favorites.service';
+import { ComparisonService } from './comparison.service';
 
-/** Estación favorita ya resuelta con sus datos completos (para el panel de favoritas). */
+/** Estación ya resuelta con sus datos completos (favoritas y comparador reutilizan la misma forma). */
 export interface FavoriteStation {
   feature: OilStationFeature;
   distanceKm?: number;
+}
+
+/** Gasolinera más barata encontrada cerca de una ruta, con el desvío que supone llegar a ella. */
+export interface CheapestOnRouteResult {
+  feature: OilStationFeature;
+  price: number;
+  detourKm: number;
+}
+
+/** Resultado de planRoute(): la ruta calculada por OSRM y, si se encontró, la estación más barata cerca de ella. */
+export interface PlannedRouteResult {
+  route: Route;
+  cheapest?: CheapestOnRouteResult;
 }
 
 // Identificadores de la fuente/capas de gasolineras en el estilo del mapa.
@@ -34,7 +48,8 @@ const CLUSTER_COUNT_LAYER = 'oil-stations-cluster-count';
 const UNCLUSTERED_LAYER = 'oil-stations-unclustered';
 
 const DEFAULT_FUEL: FuelKey = 'gasoleo_a';
-const ROUTE_BUFFER_KM = 2;
+/** Desvío máximo (km) admitido por defecto al buscar la más barata sobre una ruta: usado por el flujo "Cómo llegar" del popup; el planificador de ruta permite ajustarlo. */
+export const ROUTE_BUFFER_KM = 2;
 
 // Estilos gratuitos de OpenFreeMap (sin token ni registro): "dark" es el
 // oscuro que se usaba hasta ahora, "liberty" es su estilo con los colores
@@ -145,8 +160,14 @@ export class MapService {
   constructor(
     private readonly directionsApi: DirectionsApiClient,
     private readonly currencyPipe: CurrencyPipe,
-    private readonly favoritesService: FavoritesService
+    private readonly favoritesService: FavoritesService,
+    private readonly comparisonService: ComparisonService
     ){}
+
+  /** Combustible actualmente usado para colorear clusters y buscar la más barata en ruta (lo lee el planificador como valor por defecto de su formulario). */
+  get selectedFuelKey(): FuelKey {
+    return this.selectedFuel;
+  }
 
   setMap(map: Map){
     this.map = map;
@@ -223,6 +244,47 @@ export class MapService {
         feature,
         distanceKm: userLocation ? haversineKm(userLocation, feature.geometry.coordinates) : undefined
       }));
+  }
+
+  /** Estaciones indicadas por id (entre las últimas recibidas de la API), con su distancia al usuario si se conoce. Usado por el comparador; ignora ids que ya no estén en el dataset actual. */
+  getStationsByIds(ids: string[]): FavoriteStation[] {
+    if(!this.latestFetchedCollection || ids.length === 0){
+      return [];
+    }
+
+    const idSet = new Set(ids);
+    const userLocation = this.userLocationProvider?.();
+
+    return this.latestFetchedCollection.features
+      .filter(feature => idSet.has(feature.properties.id))
+      .map(feature => ({
+        feature,
+        distanceKm: userLocation ? haversineKm(userLocation, feature.geometry.coordinates) : undefined
+      }));
+  }
+
+  /**
+   * Precio medio del combustible indicado entre las gasolineras actualmente
+   * pintadas en el mapa. Se usa como referencia para estimar el ahorro del
+   * planificador de ruta (no hay una única "otra gasolinera" con la que
+   * comparar, así que se usa la media del dataset visible como aproximación
+   * razonable de "lo que pagarías si no hicieras el desvío").
+   */
+  getAveragePrice(fuel: FuelKey): number | undefined {
+    if(!this.renderedOilStations){
+      return undefined;
+    }
+
+    const field = FUEL_PROPERTY[fuel] as keyof OilStationProperties;
+    const prices = this.renderedOilStations.features
+      .map(feature => feature.properties[field] as number | undefined)
+      .filter((price): price is number => price != null);
+
+    if(prices.length === 0){
+      return undefined;
+    }
+
+    return prices.reduce((sum, price) => sum + price, 0) / prices.length;
   }
 
   /** Reencuadra el mapa sobre la última ruta dibujada. Devuelve false si no hay ninguna ruta activa. */
@@ -554,6 +616,32 @@ export class MapService {
     }
     container.appendChild(priceList);
 
+    const compareBtn = document.createElement('button');
+    compareBtn.type = 'button';
+    compareBtn.className = 'station-popup__compare-btn';
+
+    const applyCompareState = (isSelected: boolean) => {
+      compareBtn.textContent = isSelected ? '✓ Comparando' : '+ Comparar';
+      compareBtn.classList.toggle('is-selected', isSelected);
+      compareBtn.setAttribute('aria-pressed', String(isSelected));
+      compareBtn.setAttribute('aria-label', isSelected ? 'Quitar de la comparación' : 'Añadir a la comparación');
+    };
+    applyCompareState(this.comparisonService.isSelected(props.id));
+
+    compareBtn.addEventListener('click', () => {
+      const changed = this.comparisonService.toggle(props.id);
+      if(!changed){
+        // Límite de estaciones alcanzado: feedback breve y accesible (aria-live)
+        // en vez de un toast que no existe en la app todavía.
+        compareBtn.textContent = 'Máximo 4 estaciones';
+        compareBtn.setAttribute('aria-live', 'polite');
+        setTimeout(() => applyCompareState(this.comparisonService.isSelected(props.id)), 1500);
+        return;
+      }
+      applyCompareState(this.comparisonService.isSelected(props.id));
+    });
+    container.appendChild(compareBtn);
+
     if(this.directionsRequestHandler){
       const directionsBtn = document.createElement('button');
       directionsBtn.type = 'button';
@@ -574,7 +662,27 @@ export class MapService {
       .subscribe(resp => this.drawPolyline(resp.routes[0]));
   }
 
-  private drawPolyline(route: Route){
+  /**
+   * Pide la ruta a OSRM, la dibuja en el mapa (mismo drawPolyline que usa el
+   * botón "Cómo llegar" del popup) y busca la estación más barata a menos de
+   * bufferKm de la ruta para el combustible indicado. A diferencia de
+   * getRoutBetweenPoints(), devuelve los datos encontrados (no solo pinta el
+   * mapa) para que el planificador de ruta los muestre en su propio panel.
+   */
+  planRoute(start: [number, number], end: [number, number], fuel: FuelKey, bufferKm: number = ROUTE_BUFFER_KM): Observable<PlannedRouteResult> {
+    return this.directionsApi.getRoute(start, end).pipe(
+      map(resp => {
+        const route = resp.routes[0];
+        this.drawPolyline(route, fuel, bufferKm);
+        return {
+          route,
+          cheapest: this.findCheapestNearRoute(route.geometry.coordinates, bufferKm, fuel)
+        };
+      })
+    );
+  }
+
+  private drawPolyline(route: Route, fuel: FuelKey = this.selectedFuel, bufferKm: number = ROUTE_BUFFER_KM){
     if(!this.map){
       throw Error('No hay mapa disponible');
     }
@@ -635,33 +743,66 @@ export class MapService {
       }
     });
 
-    this.highlightCheapestOnRoute(coords);
+    this.highlightCheapestOnRoute(coords, bufferKm, fuel);
   }
 
   /**
    * Busca, entre las gasolineras actualmente pintadas en el mapa, la más
    * barata (según el combustible seleccionado) a menos de ROUTE_BUFFER_KM de
-   * la ruta dibujada, y la marca con un pin distinto. Usa la distancia al
-   * vértice de ruta más cercano como aproximación (las rutas de OSRM
-   * traen suficientes puntos intermedios para que sea representativo, sin
-   * tener que proyectar sobre cada segmento).
+   * la ruta dibujada, y la marca con un pin distinto. Delegado a
+   * findCheapestNearRoute(); esto solo se encarga del marker/popup del mapa.
    */
-  private highlightCheapestOnRoute(routeCoords: number[][]){
+  private highlightCheapestOnRoute(routeCoords: number[][], bufferKm: number = ROUTE_BUFFER_KM, fuel: FuelKey = this.selectedFuel){
     this.cheapestOnRouteMarker?.remove();
     this.cheapestOnRouteMarker = undefined;
 
-    if(!this.map || !this.renderedOilStations || routeCoords.length === 0){
+    if(!this.map){
       return;
     }
 
-    const fuelField = FUEL_PROPERTY[this.selectedFuel] as keyof OilStationProperties;
+    const result = this.findCheapestNearRoute(routeCoords, bufferKm, fuel);
+    if(!result){
+      return;
+    }
+
+    const [lng, lat] = result.feature.geometry.coordinates;
+    const popup = new Popup({ closeButton: false })
+      .setHTML(`
+        <div style="text-align: center">
+          <strong>Más barata en tu ruta</strong><br>
+          ${ result.feature.properties.Estacion ?? '' }<br>
+          ${ FUEL_LABEL[fuel] }: ${ this.currencyPipe.transform(result.price, 'EUR') }
+        </div>
+      `);
+
+    this.cheapestOnRouteMarker = new Marker({ color: '#fdd835' })
+      .setLngLat([lng, lat])
+      .setPopup(popup)
+      .addTo(this.map);
+  }
+
+  /**
+   * Busca, entre las gasolineras actualmente pintadas en el mapa, la más
+   * barata (según el combustible indicado) a menos de bufferKm de la ruta,
+   * y devuelve sus datos (sin tocar el mapa). Usa la distancia al vértice de
+   * ruta más cercano como aproximación del desvío (las rutas de OSRM traen
+   * suficientes puntos intermedios para que sea representativo, sin tener
+   * que proyectar sobre cada segmento).
+   */
+  private findCheapestNearRoute(routeCoords: number[][], bufferKm: number, fuel: FuelKey): CheapestOnRouteResult | undefined {
+    if(!this.renderedOilStations || routeCoords.length === 0){
+      return undefined;
+    }
+
+    const fuelField = FUEL_PROPERTY[fuel] as keyof OilStationProperties;
 
     const routeBounds = new LngLatBounds();
     routeCoords.forEach(coord => routeBounds.extend(coord as [number, number]));
-    const searchBounds = this.padBounds(routeBounds, ROUTE_BUFFER_KM);
+    const searchBounds = this.padBounds(routeBounds, bufferKm);
 
     let cheapest: OilStationFeature | undefined;
     let cheapestPrice = Infinity;
+    let cheapestDetourKm = Infinity;
 
     for(const feature of this.renderedOilStations.features){
       const price = feature.properties[fuelField] as number | undefined;
@@ -674,33 +815,24 @@ export class MapService {
         continue;
       }
 
-      const nearRoute = routeCoords.some(coord => haversineKm(coord, [lng, lat]) <= ROUTE_BUFFER_KM);
-      if(!nearRoute){
+      const nearestDistanceKm = routeCoords.reduce(
+        (min, coord) => Math.min(min, haversineKm(coord, [lng, lat])),
+        Infinity
+      );
+      if(nearestDistanceKm > bufferKm){
         continue;
       }
 
       cheapest = feature;
       cheapestPrice = price;
+      cheapestDetourKm = nearestDistanceKm;
     }
 
     if(!cheapest){
-      return;
+      return undefined;
     }
 
-    const [lng, lat] = cheapest.geometry.coordinates;
-    const popup = new Popup({ closeButton: false })
-      .setHTML(`
-        <div style="text-align: center">
-          <strong>Más barata en tu ruta</strong><br>
-          ${ cheapest.properties.Estacion ?? '' }<br>
-          ${ FUEL_LABEL[this.selectedFuel] }: ${ this.currencyPipe.transform(cheapestPrice, 'EUR') }
-        </div>
-      `);
-
-    this.cheapestOnRouteMarker = new Marker({ color: '#fdd835' })
-      .setLngLat([lng, lat])
-      .setPopup(popup)
-      .addTo(this.map);
+    return { feature: cheapest, price: cheapestPrice, detourKm: cheapestDetourKm };
   }
 
   private padBounds(bounds: LngLatBounds, km: number): LngLatBounds {

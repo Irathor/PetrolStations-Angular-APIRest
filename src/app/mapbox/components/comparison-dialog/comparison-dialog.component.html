@@ -1,0 +1,104 @@
+@if (columns.length < minStations) {
+  <p class="comparison-empty">
+    Selecciona al menos {{ minStations }} gasolineras para comparar (desde el mapa con "+ Comparar" o desde Favoritas).
+    Llevas {{ columns.length }} seleccionada{{ columns.length === 1 ? '' : 's' }}.
+  </p>
+} @else {
+
+  <div class="comparison-tank">
+    <label for="comparisonTank">Capacidad del depósito (litros, opcional, para el coste de viaje)</label>
+    <p-inputNumber id="comparisonTank"
+      [(ngModel)]="tankCapacityLiters"
+      [min]="0"
+      [max]="200"
+      suffix=" L"
+      (onInput)="onTankCapacityChange()" />
+  </div>
+
+  <div class="comparison-table-wrapper">
+    <table class="comparison-table">
+      <caption class="sr-only">Comparativa de precios, distancia, horario y coste de viaje de las gasolineras seleccionadas</caption>
+      <thead>
+        <tr>
+          <th scope="col"><span class="sr-only">Dato</span></th>
+          @for (column of columns; track column.id) {
+            <th scope="col" [class.is-cheapest]="column.id === cheapestId">
+              <div class="comparison-station-header">
+                <span>{{ column.name }}</span>
+                <button type="button"
+                  class="comparison-remove-btn"
+                  [attr.aria-label]="'Quitar ' + column.name + ' de la comparación'"
+                  (click)="removeFromComparison(column.id)">
+                  <i class="pi pi-times" aria-hidden="true"></i>
+                </button>
+              </div>
+              @if (column.id === cheapestId) {
+                <span class="comparison-cheapest-badge">Más barata</span>
+              }
+            </th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Dirección</th>
+          @for (column of columns; track column.id) {
+            <td>{{ column.address || '—' }}</td>
+          }
+        </tr>
+        @for (fuel of fuelOptions; track fuel.key) {
+          <tr>
+            <th scope="row">{{ fuel.label }}</th>
+            @for (column of columns; track column.id) {
+              <td [class.is-cheapest]="column.id === cheapestId && fuel.key === selectedCombustible">
+                @if (column.prices[fuel.key] != null) {
+                  {{ column.prices[fuel.key] | currency:'EUR' }}
+                } @else {
+                  <span class="comparison-no-data">Sin dato</span>
+                }
+              </td>
+            }
+          </tr>
+        }
+        <tr>
+          <th scope="row">Distancia</th>
+          @for (column of columns; track column.id) {
+            <td>
+              @if (column.distanceKm != null) {
+                {{ column.distanceKm | number:'1.1-1' }} km
+              } @else {
+                <span class="comparison-no-data">Sin dato</span>
+              }
+            </td>
+          }
+        </tr>
+        <tr>
+          <th scope="row">Estado</th>
+          @for (column of columns; track column.id) {
+            <td>
+              <span class="comparison-schedule-badge"
+                [class.is-open]="column.schedule.isOpenNow === true"
+                [class.is-closed]="column.schedule.isOpenNow === false">
+                {{ column.schedule.isOpenNow === true ? 'Abierta' : (column.schedule.isOpenNow === false ? 'Cerrada' : column.schedule.label) }}
+              </span>
+            </td>
+          }
+        </tr>
+        @if (tankCapacityLiters && tankCapacityLiters > 0) {
+          <tr>
+            <th scope="row">Coste de viaje ({{ tankCapacityLiters }} L)</th>
+            @for (column of columns; track column.id) {
+              <td [class.is-cheapest]="column.id === cheapestId">
+                @if (column.tripCost != null) {
+                  {{ column.tripCost | currency:'EUR' }}
+                } @else {
+                  <span class="comparison-no-data">Sin dato</span>
+                }
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

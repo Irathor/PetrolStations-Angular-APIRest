@@ -12,6 +12,8 @@ import { SearchResultsComponent } from './components/search-results/search-resul
 import { MainMenuComponent } from './components/main-menu/main-menu.component';
 import { FavoritesPanelComponent } from './components/favorites-panel/favorites-panel.component';
 import { BottomNavComponent } from './components/bottom-nav/bottom-nav.component';
+import { RoutePlannerComponent } from './components/route-planner/route-planner.component';
+import { ComparisonDialogComponent } from './components/comparison-dialog/comparison-dialog.component';
 
 
 
@@ -26,7 +28,9 @@ import { BottomNavComponent } from './components/bottom-nav/bottom-nav.component
     SearchResultsComponent,
     MainMenuComponent,
     FavoritesPanelComponent,
-    BottomNavComponent
+    BottomNavComponent,
+    RoutePlannerComponent,
+    ComparisonDialogComponent
   ],
   imports: [
     CommonModule,

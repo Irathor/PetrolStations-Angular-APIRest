@@ -14,6 +14,22 @@
     font-family: 'Roboto', sans-serif;
 }
 
+/* Oculta visualmente pero mantiene accesible para lectores de pantalla.
+   Utilidad global: los componentes nuevos la usan directamente en vez de
+   redeclararla (map-view.component.css tiene su propia copia local, de
+   antes de EPIC-5, por encapsulación de vista; no se toca aquí). */
+.sr-only{
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 /* MapLibre pinta sus popups (estación, lugares buscados, "más barata en tu
    ruta") con fondo blanco por defecto. Se sobrescribe aquí para que combinen
    con el tema oscuro del resto de la app: el texto claro de .station-popup y
@@ -137,6 +153,28 @@
     margin-top: 6px;
     font-size: 0.8rem;
     opacity: 0.85;
+}
+
+.station-popup__compare-btn{
+    margin-top: 8px;
+    width: 100%;
+    padding: 4px 0;
+    border: 1px solid var(--color-accent);
+    border-radius: 3px;
+    background-color: transparent;
+    color: var(--color-accent);
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.station-popup__compare-btn:hover{
+    background-color: var(--color-accent);
+    color: var(--color-bg-surface);
+}
+
+.station-popup__compare-btn.is-selected{
+    background-color: var(--color-accent);
+    color: var(--color-bg-surface);
 }
 
 .directions-btn{

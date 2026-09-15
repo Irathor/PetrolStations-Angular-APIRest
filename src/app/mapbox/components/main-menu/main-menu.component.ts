@@ -1,13 +1,17 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { Subscription } from 'rxjs';
 
 import { FuelKey } from '../../interfaces/fuel';
+import { ComparisonService } from '../../services';
 
 export const NEAR_ME_RADIUS_OPTIONS_KM = [2, 5, 10, 25, 50];
 
 /**
  * Menú principal flotante (se abre/cierra sobre un p-popover, no permanente):
  * Explorar, Cerca de mí (con radio configurable), Favoritas (con el panel de
- * detalle embebido) y Filtros (delega la apertura del drawer al padre).
+ * detalle embebido), Filtros (delega la apertura del drawer al padre),
+ * Planificar ruta y Comparar (ambos en su propio p-dialog, por la cantidad
+ * de contenido que tienen: no caben cómodamente en el popover).
  */
 @Component({
   selector: 'app-main-menu',
@@ -15,7 +19,7 @@ export const NEAR_ME_RADIUS_OPTIONS_KM = [2, 5, 10, 25, 50];
   styleUrls: ['./main-menu.component.css'],
   standalone: false
 })
-export class MainMenuComponent {
+export class MainMenuComponent implements OnInit, OnDestroy {
 
   @Input() nearMeActive = false;
   @Input() nearMeRadiusKm = 10;
@@ -34,6 +38,25 @@ export class MainMenuComponent {
 
   favoritesExpanded = false;
   popoverVisible = false;
+  routePlannerVisible = false;
+  comparisonVisible = false;
+
+  /** Cuántas gasolineras hay seleccionadas para comparar (badge del menú). Se lee directamente de ComparisonService, igual que favoritesCount se recibe por Input desde el padre para el contador de favoritas. */
+  comparisonCount = 0;
+  private comparisonSubscription?: Subscription;
+
+  constructor(private readonly comparisonService: ComparisonService) { }
+
+  ngOnInit(): void {
+    this.comparisonCount = this.comparisonService.getAll().length;
+    this.comparisonSubscription = this.comparisonService.changes$.subscribe(
+      () => this.comparisonCount = this.comparisonService.getAll().length
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.comparisonSubscription?.unsubscribe();
+  }
 
   onExplorar(){
     this.favoritesExpanded = false;
@@ -49,6 +72,16 @@ export class MainMenuComponent {
   onFilters(){
     this.favoritesExpanded = false;
     this.openFilters.emit();
+  }
+
+  onOpenRoutePlanner(){
+    this.favoritesExpanded = false;
+    this.routePlannerVisible = true;
+  }
+
+  onOpenComparison(){
+    this.favoritesExpanded = false;
+    this.comparisonVisible = true;
   }
 
 }

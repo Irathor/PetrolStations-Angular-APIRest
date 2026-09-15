@@ -78,5 +78,41 @@
       }
     </button>
 
+    <button type="button" class="main-menu__item"
+      (click)="onOpenRoutePlanner(); menuPopover.hide()">
+      <i class="pi pi-directions" aria-hidden="true"></i>
+      <span>Planificar ruta</span>
+    </button>
+
+    <button type="button" class="main-menu__item"
+      [attr.aria-label]="comparisonCount > 0 ? ('Comparar, ' + comparisonCount + ' seleccionadas') : 'Comparar'"
+      (click)="onOpenComparison(); menuPopover.hide()">
+      <i class="pi pi-table" aria-hidden="true"></i>
+      <span>Comparar</span>
+      @if (comparisonCount > 0) {
+        <p-badge [value]="comparisonCount.toString()" severity="info" />
+      }
+    </button>
+
   </nav>
 </p-popover>
+
+<p-dialog header="Planificar ruta"
+  [(visible)]="routePlannerVisible"
+  [modal]="true"
+  [dismissableMask]="true"
+  [style]="{ width: '30rem', maxWidth: '95vw' }">
+  @if (routePlannerVisible) {
+    <app-route-planner />
+  }
+</p-dialog>
+
+<p-dialog header="Comparar gasolineras"
+  [(visible)]="comparisonVisible"
+  [modal]="true"
+  [dismissableMask]="true"
+  [style]="{ width: '50rem', maxWidth: '95vw' }">
+  @if (comparisonVisible) {
+    <app-comparison-dialog [selectedCombustible]="selectedCombustible" />
+  }
+</p-dialog>

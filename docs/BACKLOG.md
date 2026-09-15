@@ -18,9 +18,9 @@ implementarlas.
 - `docs/epics/EPIC-3-escaneo-dependencias-ci.md` — Escaneo de dependencias en
   CI. Estado: Completada.
 - `docs/epics/EPIC-4-nueva-shell-navegacion.md` — Nueva shell de navegación
-  (app bar + menú flotante + drawer de filtros). Estado: Propuesta.
+  (app bar + menú flotante + drawer de filtros). Estado: Completada.
 - `docs/epics/EPIC-5-planificador-comparador.md` — Planificador de ruta
-  avanzado y comparador de gasolineras. Estado: Propuesta.
+  avanzado y comparador de gasolineras. Estado: Completada.
 - `docs/epics/EPIC-6-historico-precios-estacion.md` — Histórico de precios
   visible en la ficha de estación. Estado: Propuesta.
 - `docs/epics/EPIC-7-frontend-docker-nginx.md` — Frontend en Docker (nginx)
@@ -48,6 +48,13 @@ implementarlas.
   necesitaría su propio ADR y confirmación explícita del usuario cuando se
   plantee en firme. Anotado en la ronda de decisión del rediseño de
   frontend (2026-09-14).
+- **Confirmación visual de destino en el planificador de ruta** — al
+  seleccionar una sugerencia del buscador de destino (EPIC-5), el campo
+  conserva el texto escrito en vez de mostrar la sugerencia completa
+  seleccionada ("Barcelona" en vez de "Barcelona, Catalunya, España").
+  Funcionalmente correcto (las coordenadas sí se capturan bien, la ruta se
+  calcula bien), es solo una mejora de claridad visual pendiente de afinar.
+  Descubierto en la verificación de cierre de EPIC-5 (2026-09-15).
 
 ## Vigilancia (sin acción posible por ahora)
 
