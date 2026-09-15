@@ -15,7 +15,7 @@ FUEL_FIELDS: dict[str, str] = {
 }
 FuelKey = Literal["gasoleo_a", "gasoleo_premium", "gasolina_95", "gasolina_98"]
 
-FIELDS_TO_RETURN = "id,Estacion,Provincia,Latitud,Longitud,Horario," + ",".join(FUEL_FIELDS.values())
+FIELDS_TO_RETURN = "id,Estacion,Provincia,Direccion,Latitud,Longitud,Horario," + ",".join(FUEL_FIELDS.values())
 
 # Nº de gasolineras cubre de sobra el volumen actual (~11-12k); si el
 # dataset creciera mucho habría que paginar en condiciones.

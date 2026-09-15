@@ -29,37 +29,30 @@
 <div class="card">
   <p-menubar class="menu">
     <ng-template pTemplate="start">
-      <div class="filtros">
-        <img src="./../../../../assets/fuelfinder-logo-full.png" alt="FuelFinder" height="64" class="mr-2" />
-        <div>
-          <p-multiSelect class="selectMenu"
-            [options]="provincias"
-            optionLabel="name"
-            optionValue="name"
-            defaultLabel="Selecciona la Provincia"
-            [selectionLimit]="4"
-            [(ngModel)]="selectedProvincias"
-            (onChange)="selectProvincia($event)">
-            <ng-template #item let-provincia>
-              {{provincia.name | titlecase}}
-            </ng-template>
-          </p-multiSelect>
+      <div class="appbar">
+        <div class="appbar__brand">
+          <img src="./../../../../assets/fuelfinder-logo-full.png" alt="FuelFinder" height="64" />
         </div>
-        <div>
-          <p-multiSelect class="selectMenu"
-            [options]="estaciones"
-            optionLabel="name"
-            optionValue="name"
-            defaultLabel="Selecciona la Estación"
-            [selectionLimit]="4"
-            [(ngModel)]="selectedEstaciones"
-            (onChange)="selectEstacion($event)">
-            <ng-template #item let-estacion>
-              {{estacion.name | titlecase}}
-            </ng-template>
-          </p-multiSelect>
+
+        <div class="appbar__search">
+          <p-iconfield iconPosition="left">
+            <p-inputicon class="pi pi-search" />
+            <label for="txtQuery" class="sr-only">Buscar lugar o dirección</label>
+            <input type="text"
+              id="txtQuery"
+              pInputText
+              placeholder="Buscar..."
+              class="search-input"
+              #txtQuery
+              (keyup)="onQueryChanged(txtQuery.value)"/>
+          </p-iconfield>
+
+          @if (infoReady) {
+            <app-search-results></app-search-results>
+          }
         </div>
-        <div>
+
+        <div class="appbar__actions">
           <p-select class="selectMenu"
             [options]="fuelOptions"
             optionLabel="label"
@@ -67,68 +60,97 @@
             [(ngModel)]="selectedCombustible"
             (onChange)="selectCombustible($event)"
             aria-label="Combustible" />
-        </div>
-        <div class="slider filtro">
-          <h5 class="precioLabel">Precio: {{selectedPrecios[0] + '€ - ' + selectedPrecios[1] + '€'}}</h5>
-          <p-slider [(ngModel)]="selectedPrecios"
-            [range]="true"
-            [min]="0.00"
-            [max]="3.00"
-            [step]="0.01"
-          (onSlideEnd)="selectPrecio($event)"></p-slider>
+
+          <button type="button" class="icon-action-btn"
+            pTooltip="Centrar el mapa en tu ubicación" tooltipPosition="bottom"
+            aria-label="Centrar el mapa en tu ubicación"
+            (click)="centrarMapa()">
+            <i class="pi pi-user"></i>
+          </button>
+
+          <button type="button" class="icon-action-btn"
+            pTooltip="Cambiar entre mapa oscuro y mapa normal" tooltipPosition="bottom"
+            aria-label="Cambiar el estilo del mapa"
+            (click)="toggleMapStyle()">
+            <i class="pi" [class.pi-sun]="isDarkMap" [class.pi-moon]="!isDarkMap"></i>
+          </button>
+
+          <app-main-menu
+            [nearMeActive]="nearMeActive"
+            [nearMeRadiusKm]="nearMeRadiusKm"
+            [favoritesOnly]="favoritesOnly"
+            [favoritesCount]="favoritesCount"
+            [activeFiltersCount]="activeFiltersCount"
+            [selectedCombustible]="selectedCombustible"
+            (explorar)="explorar()"
+            (nearMeToggle)="toggleNearMe()"
+            (nearMeRadiusChange)="changeNearMeRadius($event)"
+            (favoritesOnlyToggle)="toggleFavoritesOnly()"
+            (openFilters)="openFilters()" />
         </div>
       </div>
     </ng-template>
-    <ng-template pTemplate="end">
+  </p-menubar>
+</div>
 
-      <div class="map-actions">
-        <button type="button" class="icon-action-btn"
-          pTooltip="Centrar el mapa en tu ubicación" tooltipPosition="bottom"
-          aria-label="Centrar el mapa en tu ubicación"
-          (click)="centrarMapa()">
-          <i class="pi pi-user"></i>
-        </button>
-        <button type="button" class="icon-action-btn" [class.active]="nearMeActive"
-          pTooltip="Cerca de mí: gasolineras a menos de 10 km" tooltipPosition="bottom"
-          aria-label="Mostrar solo gasolineras cerca de mí"
-          (click)="toggleNearMe()">
-          <i class="pi pi-map-marker"></i>
-        </button>
-        <button type="button" class="icon-action-btn" [class.active]="favoritesOnly"
-          pTooltip="Favoritas: gasolineras marcadas con la estrella" tooltipPosition="bottom"
-          aria-label="Mostrar solo gasolineras favoritas"
-          (click)="toggleFavoritesOnly()">
-          <i class="pi pi-star"></i>
-          @if (favoritesCount > 0) {
-            <span class="favorites-badge">{{ favoritesCount }}</span>
-          }
-        </button>
-        <button type="button" class="icon-action-btn"
-          pTooltip="Cambiar entre mapa oscuro y mapa normal" tooltipPosition="bottom"
-          aria-label="Cambiar el estilo del mapa"
-          (click)="toggleMapStyle()">
-          <i class="pi" [class.pi-sun]="isDarkMap" [class.pi-moon]="!isDarkMap"></i>
-        </button>
-      </div>
+<p-drawer [(visible)]="filtersDrawerVisible"
+  [position]="isMobileViewport ? 'bottom' : 'right'"
+  [style]="isMobileViewport ? { height: '75vh' } : { width: '22rem' }"
+  header="Filtros">
+  <div class="filters-drawer">
+    <div class="filtro">
+      <label id="provinciaLabel">Provincia</label>
+      <p-multiSelect
+        [options]="provincias"
+        optionLabel="name"
+        optionValue="name"
+        defaultLabel="Selecciona la Provincia"
+        [selectionLimit]="4"
+        [(ngModel)]="selectedProvincias"
+        (onChange)="selectProvincia($event)"
+        ariaLabelledBy="provinciaLabel">
+        <ng-template #item let-provincia>
+          {{provincia.name | titlecase}}
+        </ng-template>
+      </p-multiSelect>
+    </div>
 
-      <p-iconfield iconPosition="left">
-        <p-inputicon class="pi pi-search" />
-        <label for="txtQuery" class="sr-only">Buscar lugar o dirección</label>
-        <input type="text"
-          id="txtQuery"
-          pInputText
-          placeholder="Buscar..."
-          class="search-input"
-          #txtQuery
-          (keyup)="onQueryChanged(txtQuery.value)"/>
-      </p-iconfield>
+    <div class="filtro">
+      <label id="estacionLabel">Marca</label>
+      <p-multiSelect
+        [options]="estaciones"
+        optionLabel="name"
+        optionValue="name"
+        defaultLabel="Selecciona la Estación"
+        [selectionLimit]="4"
+        [(ngModel)]="selectedEstaciones"
+        (onChange)="selectEstacion($event)"
+        ariaLabelledBy="estacionLabel">
+        <ng-template #item let-estacion>
+          {{estacion.name | titlecase}}
+        </ng-template>
+      </p-multiSelect>
+    </div>
 
-        @if (infoReady) {
-          <app-search-results></app-search-results>
-        }
-
-      </ng-template>
-    </p-menubar>
+    <div class="filtro">
+      <h5 class="precioLabel" id="precioLabel">Precio: {{selectedPrecios[0] + '€ - ' + selectedPrecios[1] + '€'}}</h5>
+      <p-slider
+        [(ngModel)]="selectedPrecios"
+        [range]="true"
+        [min]="0.00"
+        [max]="3.00"
+        [step]="0.01"
+        ariaLabelledBy="precioLabel"
+        (onSlideEnd)="selectPrecio($event)"></p-slider>
+    </div>
   </div>
+</p-drawer>
 
-
+<app-bottom-nav [hidden]="!isMobileViewport"
+  [nearMeActive]="nearMeActive"
+  [favoritesOnly]="favoritesOnly"
+  [hasActiveRoute]="hasActiveRoute"
+  (explorar)="explorar()"
+  (nearMeToggle)="toggleNearMe()"
+  (favoritesOnlyToggle)="toggleFavoritesOnly()"
+  (focusRoute)="focusActiveRoute()" />

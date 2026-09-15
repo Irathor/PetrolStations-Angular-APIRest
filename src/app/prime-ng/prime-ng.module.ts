@@ -12,6 +12,11 @@ import { InputIconModule } from 'primeng/inputicon';
 import { SelectModule } from 'primeng/select';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TooltipModule } from 'primeng/tooltip';
+import { DrawerModule } from 'primeng/drawer';
+import { PopoverModule } from 'primeng/popover';
+import { ButtonModule } from 'primeng/button';
+import { BadgeModule } from 'primeng/badge';
+import { SelectButtonModule } from 'primeng/selectbutton';
 
 @NgModule({
   declarations: [],
@@ -28,7 +33,12 @@ import { TooltipModule } from 'primeng/tooltip';
     InputIconModule,
     SelectModule,
     ProgressSpinnerModule,
-    TooltipModule
+    TooltipModule,
+    DrawerModule,
+    PopoverModule,
+    ButtonModule,
+    BadgeModule,
+    SelectButtonModule
   ]
 })
 export class PrimeNGModule { }

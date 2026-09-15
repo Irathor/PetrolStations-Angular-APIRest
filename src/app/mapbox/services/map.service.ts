@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
+import { BehaviorSubject, Observable } from 'rxjs';
 
 import {
   GeoJSONSource,
@@ -17,7 +18,14 @@ import { Route } from '../interfaces/directions';
 import { OilStationFeature, OilStationProperties, OilStationsCollection } from '../interfaces/oilstations';
 import { FUEL_LABEL, FUEL_PROPERTY, FuelKey } from '../interfaces/fuel';
 import { describeSchedule } from '../utils/schedule';
+import { haversineKm } from '../utils/geo';
 import { FavoritesService } from './favorites.service';
+
+/** Estación favorita ya resuelta con sus datos completos (para el panel de favoritas). */
+export interface FavoriteStation {
+  feature: OilStationFeature;
+  distanceKm?: number;
+}
 
 // Identificadores de la fuente/capas de gasolineras en el estilo del mapa.
 const OIL_STATIONS_SOURCE = 'oil-stations';
@@ -109,6 +117,16 @@ export class MapService {
   // (evita una dependencia circular entre ambos servicios).
   private directionsRequestHandler?: (destination: [number, number]) => void;
 
+  // Mismo patrón que directionsRequestHandler: GeolocationsService registra
+  // aquí cómo obtener la ubicación actual del usuario, para que el popup
+  // pueda mostrar la distancia sin crear una dependencia circular.
+  private userLocationProvider?: () => [number, number] | undefined;
+
+  private lastRouteBounds?: LngLatBounds;
+  private readonly hasActiveRouteSubject = new BehaviorSubject<boolean>(false);
+  /** Emite true/false según haya o no una ruta dibujada actualmente en el mapa. */
+  readonly hasActiveRoute$: Observable<boolean> = this.hasActiveRouteSubject.asObservable();
+
   private styleMode: MapStyleMode = this.loadStoredStyleMode();
 
   get isMapReady(){
@@ -168,6 +186,10 @@ export class MapService {
       }
       this.cheapestOnRouteMarker?.remove();
       this.cheapestOnRouteMarker = undefined;
+      // setStyle() se ha llevado por delante la capa/fuente de la ruta dibujada
+      // (si la había): no se reconstruye, así que deja de haber ruta activa.
+      this.lastRouteBounds = undefined;
+      this.hasActiveRouteSubject.next(false);
     });
   }
 
@@ -181,6 +203,36 @@ export class MapService {
 
   setDirectionsHandler(handler: (destination: [number, number]) => void){
     this.directionsRequestHandler = handler;
+  }
+
+  setUserLocationProvider(provider: () => [number, number] | undefined){
+    this.userLocationProvider = provider;
+  }
+
+  /** Estaciones favoritas (entre las últimas recibidas de la API) con su distancia al usuario, si se conoce. */
+  getFavoriteStations(): FavoriteStation[] {
+    if(!this.latestFetchedCollection){
+      return [];
+    }
+
+    const userLocation = this.userLocationProvider?.();
+
+    return this.latestFetchedCollection.features
+      .filter(feature => this.favoritesService.isFavorite(feature.properties.id))
+      .map(feature => ({
+        feature,
+        distanceKm: userLocation ? haversineKm(userLocation, feature.geometry.coordinates) : undefined
+      }));
+  }
+
+  /** Reencuadra el mapa sobre la última ruta dibujada. Devuelve false si no hay ninguna ruta activa. */
+  fitToActiveRoute(): boolean {
+    if(!this.map || !this.lastRouteBounds){
+      return false;
+    }
+
+    this.map.fitBounds(this.lastRouteBounds, { padding: 200 });
+    return true;
   }
 
   flyto(coords:LngLatLike){
@@ -415,32 +467,29 @@ export class MapService {
    * poder engancharle listeners de clic sin depender de Angular dentro del popup.
    */
   private buildStationPopupElement(props: OilStationProperties, destination: [number, number]): HTMLElement {
+    // Construido con document.createElement (no una plantilla Angular): MapLibre
+    // monta el popup fuera del árbol de componentes de Angular. Las clases usadas
+    // aquí (.station-popup*) son globales, definidas en src/styles.css, con los
+    // mismos tokens de color que el resto de la app.
     const container = document.createElement('div');
-    container.style.textAlign = 'center';
-    container.style.minWidth = '180px';
+    container.className = 'station-popup';
 
     const header = document.createElement('div');
-    header.style.display = 'flex';
-    header.style.alignItems = 'center';
-    header.style.justifyContent = 'center';
-    header.style.gap = '6px';
+    header.className = 'station-popup__header';
 
     const title = document.createElement('h6');
-    title.style.margin = '0';
-    title.innerHTML = `<strong>${ props.Estacion ?? '' }</strong>`;
+    title.className = 'station-popup__title';
+    title.textContent = props.Estacion ?? '';
 
     const favoriteBtn = document.createElement('button');
     favoriteBtn.type = 'button';
-    favoriteBtn.title = 'Marcar como favorita';
-    favoriteBtn.style.border = 'none';
-    favoriteBtn.style.background = 'none';
-    favoriteBtn.style.cursor = 'pointer';
-    favoriteBtn.style.fontSize = '1.1rem';
-    favoriteBtn.style.lineHeight = '1';
+    favoriteBtn.className = 'station-popup__favorite-btn';
 
     const applyStar = (isFavorite: boolean) => {
       favoriteBtn.textContent = isFavorite ? '★' : '☆';
-      favoriteBtn.style.color = isFavorite ? '#fdd835' : 'inherit';
+      favoriteBtn.classList.toggle('is-favorite', isFavorite);
+      favoriteBtn.setAttribute('aria-pressed', String(isFavorite));
+      favoriteBtn.setAttribute('aria-label', isFavorite ? 'Quitar de favoritas' : 'Marcar como favorita');
     };
     applyStar(this.favoritesService.isFavorite(props.id));
 
@@ -449,16 +498,37 @@ export class MapService {
     header.append(title, favoriteBtn);
     container.appendChild(header);
 
-    const schedule = describeSchedule(props.Horario);
-    const scheduleLine = document.createElement('span');
-    scheduleLine.style.display = 'block';
-    scheduleLine.style.fontSize = '0.85rem';
-    scheduleLine.style.opacity = '0.85';
-    if(schedule.isOpenNow !== undefined){
-      scheduleLine.style.color = schedule.isOpenNow ? '#66bb6a' : '#ef5350';
+    if(props.Direccion){
+      const address = document.createElement('span');
+      address.className = 'station-popup__address';
+      address.textContent = props.Direccion;
+      container.appendChild(address);
     }
-    scheduleLine.textContent = schedule.label;
-    container.appendChild(scheduleLine);
+
+    const schedule = describeSchedule(props.Horario);
+    const badge = document.createElement('span');
+    badge.className = 'station-popup__badge';
+    if(schedule.isOpenNow !== undefined){
+      badge.classList.add(schedule.isOpenNow ? 'is-open' : 'is-closed');
+    }
+    badge.textContent = schedule.label;
+    container.appendChild(badge);
+
+    const userLocation = this.userLocationProvider?.();
+    if(userLocation){
+      const distance = document.createElement('span');
+      distance.className = 'station-popup__distance';
+      distance.textContent = `${ haversineKm(userLocation, destination).toFixed(1) } km`;
+      container.appendChild(distance);
+    }
+
+    const selectedFuelPrice = props[FUEL_PROPERTY[this.selectedFuel] as keyof OilStationProperties] as number | undefined;
+    if(selectedFuelPrice != null){
+      const highlightedPrice = document.createElement('div');
+      highlightedPrice.className = 'station-popup__price';
+      highlightedPrice.innerHTML = `${ this.currencyPipe.transform(selectedFuelPrice, 'EUR') }<small>${ FUEL_LABEL[this.selectedFuel] }</small>`;
+      container.appendChild(highlightedPrice);
+    }
 
     const priceLines: Array<[FuelKey, string]> = [
       ['gasoleo_a', 'Gasóleo A'],
@@ -467,20 +537,22 @@ export class MapService {
       ['gasolina_98', 'Gasolina 98']
     ];
 
+    const priceList = document.createElement('div');
+    priceList.className = 'station-popup__price-list';
     for(const [fuel, label] of priceLines){
+      // El precio del combustible seleccionado ya se muestra destacado arriba.
+      if(fuel === this.selectedFuel){
+        continue;
+      }
       const price = props[FUEL_PROPERTY[fuel] as keyof OilStationProperties] as number | undefined;
       if(price == null){
         continue;
       }
       const line = document.createElement('span');
-      line.style.display = 'block';
-      // El combustible seleccionado en el filtro se resalta, es el que se está comparando.
-      if(fuel === this.selectedFuel){
-        line.style.fontWeight = 'bold';
-      }
       line.textContent = `${ label }: ${ this.currencyPipe.transform(price, 'EUR') }`;
-      container.appendChild(line);
+      priceList.appendChild(line);
     }
+    container.appendChild(priceList);
 
     if(this.directionsRequestHandler){
       const directionsBtn = document.createElement('button');
@@ -517,6 +589,9 @@ export class MapService {
     this.map?.fitBounds(bounds, {
       padding:200
     });
+
+    this.lastRouteBounds = bounds;
+    this.hasActiveRouteSubject.next(true);
 
     // Polyline (google maps) Linestring (MapLibre)
     const sourceData: GeoJSONSourceSpecification = {
@@ -599,7 +674,7 @@ export class MapService {
         continue;
       }
 
-      const nearRoute = routeCoords.some(coord => this.haversineKm(coord, [lng, lat]) <= ROUTE_BUFFER_KM);
+      const nearRoute = routeCoords.some(coord => haversineKm(coord, [lng, lat]) <= ROUTE_BUFFER_KM);
       if(!nearRoute){
         continue;
       }
@@ -637,21 +712,6 @@ export class MapService {
       [bounds.getWest() - lonPad, bounds.getSouth() - latPad],
       [bounds.getEast() + lonPad, bounds.getNorth() + latPad]
     );
-  }
-
-  private haversineKm(a: number[], b: number[]): number {
-    const toRad = (deg: number) => deg * Math.PI / 180;
-    const [lon1, lat1] = a;
-    const [lon2, lat2] = b;
-    const R = 6371;
-
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    const sinDLat = Math.sin(dLat / 2);
-    const sinDLon = Math.sin(dLon / 2);
-    const h = sinDLat * sinDLat + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * sinDLon * sinDLon;
-
-    return 2 * R * Math.asin(Math.sqrt(h));
   }
 
 }

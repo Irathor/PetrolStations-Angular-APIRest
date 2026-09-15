@@ -6,6 +6,7 @@ export interface OilStationProperties {
     id: string;
     Estacion?: string;
     Provincia?: string;
+    Direccion?: string;
     Horario?: string;
     Precio_Gasoleo_A?: number;
     Precio_Gasoleo_Premium?: number;

@@ -14,9 +14,131 @@
     font-family: 'Roboto', sans-serif;
 }
 
-/* Botón "Cómo llegar" del popup de una gasolinera (MapService lo crea con
-   document.createElement, fuera de una plantilla de Angular, así que necesita
-   una clase global en vez de un CSS de componente con ámbito). */
+/* MapLibre pinta sus popups (estación, lugares buscados, "más barata en tu
+   ruta") con fondo blanco por defecto. Se sobrescribe aquí para que combinen
+   con el tema oscuro del resto de la app: el texto claro de .station-popup y
+   compañía necesita este fondo oscuro para tener contraste suficiente
+   (WCAG AA), y como ninguno de los otros dos popups fija su propio color de
+   texto, heredan directamente este color claro y siguen siendo legibles. */
+.maplibregl-popup-content{
+    background-color: var(--color-bg-surface);
+    color: rgba(255, 255, 255, 0.95);
+    border-radius: 8px;
+    padding: 14px 16px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip{
+    border-top-color: var(--color-bg-surface);
+}
+
+.maplibregl-popup-anchor-top .maplibregl-popup-tip{
+    border-bottom-color: var(--color-bg-surface);
+}
+
+.maplibregl-popup-anchor-left .maplibregl-popup-tip{
+    border-right-color: var(--color-bg-surface);
+}
+
+.maplibregl-popup-anchor-right .maplibregl-popup-tip{
+    border-left-color: var(--color-bg-surface);
+}
+
+.maplibregl-popup-close-button{
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* Card del popup de una gasolinera (MapService la crea con document.createElement,
+   fuera de una plantilla de Angular -MapLibre no puede montar popups con
+   componentes Angular-, así que necesita clases globales en vez de un CSS de
+   componente con ámbito). */
+.station-popup{
+    min-width: 200px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.station-popup__header{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.station-popup__title{
+    margin: 0;
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+.station-popup__favorite-btn{
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    line-height: 1;
+    color: inherit;
+}
+
+.station-popup__favorite-btn.is-favorite{
+    color: var(--color-favorite);
+}
+
+.station-popup__address{
+    display: block;
+    margin-top: 2px;
+    font-size: 0.8rem;
+    opacity: 0.85;
+}
+
+.station-popup__badge{
+    display: inline-block;
+    margin-top: 6px;
+    padding: 1px 8px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.station-popup__badge.is-open{
+    background-color: rgba(102, 187, 106, 0.2);
+    color: #66bb6a;
+}
+
+.station-popup__badge.is-closed{
+    background-color: rgba(239, 83, 80, 0.2);
+    color: #ef5350;
+}
+
+.station-popup__distance{
+    display: block;
+    margin-top: 4px;
+    font-size: 0.8rem;
+    opacity: 0.85;
+}
+
+.station-popup__price{
+    margin-top: 8px;
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: var(--color-accent);
+}
+
+.station-popup__price small{
+    display: block;
+    font-size: 0.7rem;
+    font-weight: normal;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.station-popup__price-list{
+    display: flex;
+    flex-direction: column;
+    margin-top: 6px;
+    font-size: 0.8rem;
+    opacity: 0.85;
+}
+
 .directions-btn{
     margin-top: 8px;
     width: 100%;

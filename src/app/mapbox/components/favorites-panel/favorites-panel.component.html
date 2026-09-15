@@ -1,0 +1,34 @@
+@if (rows.length === 0) {
+  <p class="favorites-empty">
+    Todavía no tienes gasolineras favoritas. Márcalas con la estrella desde su ficha en el mapa.
+  </p>
+} @else {
+  <ul class="favorites-list" role="list">
+    @for (row of rows; track row.id) {
+      <li>
+        <button type="button"
+          class="favorites-item"
+          (click)="focusStation(row)"
+          (mouseenter)="focusStation(row)">
+          <span class="favorites-item__name">{{ row.name }}</span>
+          @if (row.address) {
+            <span class="favorites-item__address">{{ row.address }}</span>
+          }
+          <span class="favorites-item__meta">
+            @if (row.price != null) {
+              <span class="favorites-item__price">{{ row.price | currency:'EUR' }}</span>
+            }
+            @if (row.distanceKm != null) {
+              <span class="favorites-item__distance">{{ row.distanceKm | number:'1.1-1' }} km</span>
+            }
+            <span class="favorites-item__badge"
+              [class.is-open]="row.schedule.isOpenNow === true"
+              [class.is-closed]="row.schedule.isOpenNow === false">
+              {{ row.schedule.isOpenNow === true ? 'Abierta' : (row.schedule.isOpenNow === false ? 'Cerrada' : row.schedule.label) }}
+            </span>
+          </span>
+        </button>
+      </li>
+    }
+  </ul>
+}

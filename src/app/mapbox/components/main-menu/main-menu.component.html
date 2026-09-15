@@ -1,0 +1,82 @@
+<button type="button"
+  class="main-menu-trigger"
+  pTooltip="Menú" tooltipPosition="bottom"
+  aria-haspopup="true"
+  [attr.aria-expanded]="popoverVisible"
+  aria-label="Abrir menú principal"
+  (click)="menuPopover.toggle($event)">
+  <i class="pi pi-bars" aria-hidden="true"></i>
+  @if (favoritesCount > 0 || activeFiltersCount > 0) {
+    <span class="main-menu-trigger__badge" aria-hidden="true"></span>
+  }
+</button>
+
+<p-popover #menuPopover styleClass="main-menu-popover"
+  (onShow)="popoverVisible = true"
+  (onHide)="popoverVisible = false; favoritesExpanded = false">
+  <nav class="main-menu" aria-label="Menú principal">
+
+    <button type="button" class="main-menu__item"
+      (click)="onExplorar(); menuPopover.hide()">
+      <i class="pi pi-compass" aria-hidden="true"></i>
+      <span>Explorar</span>
+    </button>
+
+    <div class="main-menu__section">
+      <button type="button" class="main-menu__item"
+        [class.active]="nearMeActive"
+        [attr.aria-pressed]="nearMeActive"
+        (click)="nearMeToggle.emit()">
+        <i class="pi pi-map-marker" aria-hidden="true"></i>
+        <span>Cerca de mí</span>
+      </button>
+      @if (nearMeActive) {
+        <div class="main-menu__subsection">
+          <label id="nearMeRadiusLabel" class="main-menu__subsection-label">Radio de búsqueda</label>
+          <p-selectButton
+            [options]="radiusOptions"
+            optionLabel="label"
+            optionValue="value"
+            [ngModel]="nearMeRadiusKm"
+            (onChange)="onRadiusChange($event)"
+            ariaLabelledBy="nearMeRadiusLabel" />
+        </div>
+      }
+    </div>
+
+    <div class="main-menu__section">
+      <button type="button" class="main-menu__item"
+        [class.active]="favoritesOnly"
+        [attr.aria-expanded]="favoritesExpanded"
+        (click)="favoritesExpanded = !favoritesExpanded">
+        <i class="pi pi-star" aria-hidden="true"></i>
+        <span>Favoritas</span>
+        @if (favoritesCount > 0) {
+          <p-badge [value]="favoritesCount.toString()" severity="warn" />
+        }
+      </button>
+      @if (favoritesExpanded) {
+        <div class="main-menu__subsection">
+          <button type="button" class="main-menu__favorites-only-toggle"
+            [class.active]="favoritesOnly"
+            [attr.aria-pressed]="favoritesOnly"
+            (click)="favoritesOnlyToggle.emit()">
+            {{ favoritesOnly ? 'Mostrando solo favoritas' : 'Mostrar solo favoritas en el mapa' }}
+          </button>
+          <app-favorites-panel [selectedCombustible]="selectedCombustible" />
+        </div>
+      }
+    </div>
+
+    <button type="button" class="main-menu__item"
+      [attr.aria-label]="activeFiltersCount > 0 ? ('Filtros, ' + activeFiltersCount + ' activos') : 'Filtros'"
+      (click)="onFilters(); menuPopover.hide()">
+      <i class="pi pi-sliders-h" aria-hidden="true"></i>
+      <span>Filtros</span>
+      @if (activeFiltersCount > 0) {
+        <p-badge [value]="activeFiltersCount.toString()" />
+      }
+    </button>
+
+  </nav>
+</p-popover>

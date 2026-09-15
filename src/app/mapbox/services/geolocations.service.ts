@@ -48,6 +48,11 @@ export class GeolocationsService {
         this.mapService.getRoutBetweenPoints(this.userLocation, destination);
       }
     });
+
+    // Mismo motivo que el hook anterior: el popup y el panel de favoritas
+    // necesitan la posición del usuario para calcular distancias, sin que
+    // MapService dependa de este servicio.
+    this.mapService.setUserLocationProvider(() => this.userLocation);
    }
 
   public async getUserLocation(): Promise<[number,number]> {

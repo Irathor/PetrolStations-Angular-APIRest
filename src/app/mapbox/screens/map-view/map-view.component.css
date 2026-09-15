@@ -19,26 +19,77 @@
     transition: opacity 0.5s ease;
 }
 
+/* App bar: logo a la izquierda, buscador centrado, acciones a la derecha.
+   Se implementa con grid (no con los slots start/end de p-menubar) para
+   poder centrar de verdad el buscador respecto al ancho total de la barra. */
+.appbar{
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px 12px;
+    width: 100%;
+}
+
+/* PrimeNG envuelve el contenido de pTemplate="start" en un
+   ".p-menubar-start" que por defecto NO se estira al ancho del menubar
+   (piensa en un logo pequeño, no en una barra completa) — sin esto, el
+   grid de arriba calcula "auto minmax(0,1fr) auto" sobre un contenedor
+   más estrecho que la barra real, dejando el buscador descentrado y las
+   acciones de la derecha apelotonadas en el centro en vez de en el borde.
+   Ese wrapper lo genera el propio componente de PrimeNG (no está en nuestra
+   plantilla), así que hace falta ::ng-deep para alcanzarlo. */
+:host ::ng-deep .p-menubar-start{
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+}
+
+.appbar__brand{
+    display: flex;
+    align-items: center;
+}
+
+.appbar__brand img{
+    display: block;
+    height: 48px;
+    width: auto;
+    max-width: 100%;
+}
+
+.appbar__search{
+    position: relative;
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+}
+
+.appbar__search .search-input{
+    width: 100%;
+    max-width: 320px;
+    margin-right: 0;
+}
+
+.appbar__actions{
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
 app-search-results {
     position: absolute;
     top: 100%;
-    right: 20px;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 1;
     background-color: var(--color-bg-surface);
     border-radius: 3px;
     border: 1px solid var(--color-accent);
     width: 220px;
+    max-width: 90vw;
     text-align: center;
     padding-top: 10px;
-}
-
-.mr-2{
-    margin-right: 10px;
-    margin-left: 10px;
-}
-
-.search-input{
-    margin-right: 10px;
 }
 
 .search-input:focus{
@@ -54,18 +105,6 @@ app-search-results {
 
 .selectMenu{
     margin-right: 10px;
-}
-
-.filtros{
-    display: flex;
-    align-items: center;
-}
-
-.map-actions{
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-right: 12px;
 }
 
 .icon-action-btn{
@@ -99,34 +138,40 @@ app-search-results {
     background-color: rgba(117, 190, 248, 0.15);
 }
 
-.favorites-badge{
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    min-width: 14px;
-    height: 14px;
-    padding: 0 3px;
-    border-radius: 7px;
-    background-color: var(--color-favorite);
-    color: var(--color-bg-surface);
-    font-size: 0.65rem;
-    line-height: 14px;
-    font-weight: bold;
+/* Contenido del p-drawer de filtros (provincia/marca/precio; el combustible
+   vive en el app bar, siempre visible, ver criterio de aceptación 1). */
+.filters-drawer{
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 4px 2px;
 }
 
-.precioLabel{
-    color: rgba(255, 255, 255, 0.77);
+.filtro{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
-.slider{
-    width: 213px;
-    margin-right: 35px;
-    margin-left: 20px;
+.filtro label,
+.filtro .precioLabel{
+    margin: 0;
+    color: rgba(255, 255, 255, 0.87);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.filtro .p-multiselect,
+.filtro .p-slider{
+    width: 100%;
 }
 
 .default-location-notice{
     position: absolute;
-    top: 10px;
+    /* Debajo de la app bar (~78px de alto), no encima: con top:10px se
+       pintaba por delante de los controles de la derecha (combustible,
+       centrar mapa, tema, menú), tapándolos por completo. */
+    top: 88px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 1;
@@ -172,7 +217,9 @@ app-search-results {
 
 .oil-stations-status{
     position: absolute;
-    top: 10px;
+    /* Mismo motivo que .default-location-notice: debajo de la app bar,
+       no encima (right:20px caía justo sobre el botón del menú principal). */
+    top: 88px;
     right: 20px;
     z-index: 1;
     display: flex;
@@ -212,18 +259,34 @@ app-search-results {
 }
 
 @media (max-width: 900px){
-    .filtros{
-        flex-wrap: wrap;
-        row-gap: 8px;
-    }
-
-    .slider{
-        margin-left: 0;
-        margin-right: 10px;
-    }
-
     .card{
         width: 95%;
+        /* Deja hueco para la bottom navigation fija, que si no taparía la
+           parte inferior de la barra al desvanecerse el resto del mapa. */
+        margin-bottom: 64px;
+    }
+
+    .appbar{
+        grid-template-columns: 1fr auto;
+        grid-template-areas:
+            "brand actions"
+            "search search";
+    }
+
+    .appbar__brand{
+        grid-area: brand;
+    }
+
+    .appbar__brand img{
+        height: 40px;
+    }
+
+    .appbar__actions{
+        grid-area: actions;
+    }
+
+    .appbar__search{
+        grid-area: search;
     }
 
     .default-location-notice,

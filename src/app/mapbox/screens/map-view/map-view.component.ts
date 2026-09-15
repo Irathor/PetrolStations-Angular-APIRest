@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 
 import { Subscription } from 'rxjs';
 
@@ -8,14 +8,20 @@ import { FacetItem } from '../../interfaces/facets';
 import { OilStationsFilter } from '../../interfaces/oilStationsFilter';
 import { FUEL_OPTIONS, FuelKey } from '../../interfaces/fuel';
 
-const NEAR_ME_RADIUS_KM = 10;
+const DEFAULT_NEAR_ME_RADIUS_KM = 10;
+const DEFAULT_PRECIO_RANGE: [number, number] = [0, 3];
 const FILTERS_STORAGE_KEY = 'oil-stations:filtros';
+
+// Por debajo de este ancho: drawer de filtros desde abajo, bottom navigation
+// visible. Mismo umbral que ya usaba la barra de filtros apilada anterior.
+const MOBILE_BREAKPOINT_PX = 900;
 
 interface StoredFilters {
   provincias: string[];
   estaciones: string[];
   precio: number[];
   combustible: FuelKey;
+  nearMeRadiusKm?: number;
 }
 
 @Component({
@@ -32,17 +38,23 @@ export class MapViewComponent implements OnInit, OnDestroy {
 
   selectedProvincias: string[] = [];
   selectedEstaciones: string[] = [];
-  selectedPrecios: number[] = [0, 3];
+  selectedPrecios: number[] = [...DEFAULT_PRECIO_RANGE];
   selectedCombustible: FuelKey = 'gasoleo_a';
 
   public isLoadingOilStations: boolean = false;
   public noResults: boolean = false;
 
   public nearMeActive: boolean = false;
+  public nearMeRadiusKm: number = DEFAULT_NEAR_ME_RADIUS_KM;
   public favoritesOnly: boolean = false;
   public favoritesCount: number = 0;
 
+  public filtersDrawerVisible: boolean = false;
+  public isMobileViewport: boolean = false;
+  public hasActiveRoute: boolean = false;
+
   private favoritesSubscription?: Subscription;
+  private hasActiveRouteSubscription?: Subscription;
 
   private debounceTimer?: NodeJS.Timeout;
   public infoReady: boolean = false;
@@ -55,16 +67,23 @@ export class MapViewComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
 
+    this.updateIsMobileViewport();
+
     const stored = this.loadStoredFilters();
     this.selectedProvincias = stored.provincias ?? [];
     this.selectedEstaciones = stored.estaciones ?? [];
-    this.selectedPrecios = stored.precio ?? [0, 3];
+    this.selectedPrecios = stored.precio ?? [...DEFAULT_PRECIO_RANGE];
     this.selectedCombustible = stored.combustible ?? 'gasoleo_a';
+    this.nearMeRadiusKm = stored.nearMeRadiusKm ?? DEFAULT_NEAR_ME_RADIUS_KM;
     this.mapService.setFuelField(this.selectedCombustible);
 
     this.favoritesCount = this.favoritesService.getAll().length;
     this.favoritesSubscription = this.favoritesService.changes$.subscribe(
       () => this.favoritesCount = this.favoritesService.getAll().length
+    );
+
+    this.hasActiveRouteSubscription = this.mapService.hasActiveRoute$.subscribe(
+      active => this.hasActiveRoute = active
     );
 
     // Listas para los desplegables de filtro (siempre sobre el dataset completo).
@@ -82,6 +101,56 @@ export class MapViewComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.favoritesSubscription?.unsubscribe();
+    this.hasActiveRouteSubscription?.unsubscribe();
+  }
+
+  @HostListener('window:resize')
+  updateIsMobileViewport(){
+    this.isMobileViewport = typeof window !== 'undefined' && window.innerWidth <= MOBILE_BREAKPOINT_PX;
+  }
+
+  get activeFiltersCount(): number {
+    let count = 0;
+    if(this.selectedProvincias.length > 0){ count++; }
+    if(this.selectedEstaciones.length > 0){ count++; }
+    if(this.selectedPrecios[0] !== DEFAULT_PRECIO_RANGE[0] || this.selectedPrecios[1] !== DEFAULT_PRECIO_RANGE[1]){ count++; }
+    return count;
+  }
+
+  openFilters(){
+    this.filtersDrawerVisible = true;
+  }
+
+  /** Accedido desde el menú/bottom nav: vuelve a la vista general (sin "cerca de mí" ni "solo favoritas"). */
+  explorar(){
+    let changed = false;
+
+    if(this.nearMeActive){
+      this.nearMeActive = false;
+      changed = true;
+    }
+    if(this.favoritesOnly){
+      this.favoritesOnly = false;
+      this.mapService.setFavoritesOnly(false);
+      changed = true;
+    }
+
+    if(changed){
+      this.applyFilters();
+    }
+  }
+
+  changeNearMeRadius(radiusKm: number){
+    this.nearMeRadiusKm = radiusKm;
+    if(this.nearMeActive){
+      this.applyFilters();
+    }else{
+      this.persistFilters();
+    }
+  }
+
+  focusActiveRoute(){
+    this.mapService.fitToActiveRoute();
   }
 
   get locationReady(){
@@ -187,7 +256,7 @@ export class MapViewComponent implements OnInit, OnDestroy {
 
     if(this.nearMeActive && this.geolocationsService.userLocation){
       const [lon, lat] = this.geolocationsService.userLocation;
-      filter.cercaDe = { lat, lon, radioKm: NEAR_ME_RADIUS_KM };
+      filter.cercaDe = { lat, lon, radioKm: this.nearMeRadiusKm };
     }
 
     this.isLoadingOilStations = true;
@@ -218,6 +287,7 @@ export class MapViewComponent implements OnInit, OnDestroy {
         estaciones: this.selectedEstaciones,
         precio: this.selectedPrecios,
         combustible: this.selectedCombustible,
+        nearMeRadiusKm: this.nearMeRadiusKm,
       };
       localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(toStore));
     } catch {
