@@ -108,6 +108,20 @@ services:
       retries: 10
       start_period: 60s
 
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    restart: unless-stopped
+    ports:
+      # FRONTEND_PORT es el puerto de host de Docker Compose (no una
+      # variable leida por el bundler en tiempo de build, por eso no lleva
+      # prefijo VITE_*/similar). Default 4200 para que coincida con
+      # `ng serve` sin necesidad de .env.
+      - "${FRONTEND_PORT:-4200}:80"
+    depends_on:
+      - backend
+
 volumes:
   solr_data:
   postgres_data:

@@ -1,0 +1,18 @@
+# Evita que COPY . . en Dockerfile.frontend pise el node_modules instalado
+# dentro del contenedor (RUN npm ci) con el node_modules del host, que puede
+# traer binarios nativos compilados para otra plataforma (esbuild,
+# @parcel/watcher, lmdb...). Tambien reduce mucho el build context.
+node_modules
+dist
+.git
+.angular
+
+# Otros servicios: cada uno usa su propio build context (./backend,
+# ./airflow), no hace falta arrastrarlos al construir el frontend.
+backend
+airflow
+dbt
+
+.env
+.env.*
+!.env.example

@@ -69,9 +69,11 @@ bundler, no `tsc`, quien decida cómo tratar los `import`/`export`) y tiene
 docker compose up -d --build
 ```
 
-Esto levanta Postgres, Solr, Airflow y el backend. Solr arranca **vacío**: la
-primera vez hay que disparar la ingesta a mano (después, el DAG diario de
-Airflow se encarga solo):
+Esto levanta Postgres, Solr, Airflow, el backend y el frontend (servido con
+nginx a partir de `ng build --configuration production`, ver
+`Dockerfile.frontend`). Solr arranca **vacío**: la primera vez hay que
+disparar la ingesta a mano (después, el DAG diario de Airflow se encarga
+solo):
 
 ```bash
 curl -X POST http://localhost:8001/api/admin/reindex
@@ -81,11 +83,12 @@ Airflow expone su UI en `http://localhost:8080` (usuario/contraseña por
 defecto `admin`/`admin` en desarrollo — cambiar `AIRFLOW_API_USERNAME`/
 `AIRFLOW_API_PASSWORD` en el `.env` antes de cualquier despliegue real).
 
-El frontend no está en el `docker-compose.yml` (se sirve en modo desarrollo con
-`ng serve`, ver abajo); si se quiere servir también desde Docker en producción,
-habría que añadir un servicio con una imagen nginx sirviendo `ng build --configuration production`.
+El frontend queda disponible en `http://localhost:4200` (configurable con
+`FRONTEND_PORT` en `.env`, ver `.env.example`) y proxya `/api/*` al backend
+internamente (`docker/frontend/nginx.conf`), igual que hace `ng serve` en
+desarrollo — el navegador nunca necesita CORS ni hablar directo con Solr.
 
-### Frontend (desarrollo)
+### Frontend (desarrollo, sin Docker)
 
 ```bash
 npm install
@@ -116,6 +119,13 @@ Copiar `backend/.env.example` a `backend/.env` y ajustar si hace falta
 | `AIRFLOW_API_USERNAME` | Usuario para autenticarse contra la REST API de Airflow | `admin` |
 | `AIRFLOW_API_PASSWORD` | Contraseña para autenticarse contra la REST API de Airflow | `admin` |
 | `ALERT_WEBHOOK_URL` | Opcional. Webhook entrante (Discord o Slack) al que el DAG de Airflow notifica si el pipeline falla | sin definir (solo se loggea el fallo) |
+
+Variables del `.env.example` de la raíz (usadas por `docker-compose.yml`,
+incluye las compartidas de arriba):
+
+| Variable | Descripción | Por defecto |
+|---|---|---|
+| `FRONTEND_PORT` | Puerto de host donde se expone el frontend (nginx) | `4200` |
 
 ## API del backend
 

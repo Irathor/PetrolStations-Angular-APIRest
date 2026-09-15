@@ -24,7 +24,7 @@ implementarlas.
 - `docs/epics/EPIC-6-historico-precios-estacion.md` — Histórico de precios
   visible en la ficha de estación. Estado: Completada.
 - `docs/epics/EPIC-7-frontend-docker-nginx.md` — Frontend en Docker (nginx)
-  para producción. Estado: Propuesta.
+  para producción. Estado: Completada.
 
 ## Niebla
 

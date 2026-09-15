@@ -1,0 +1,28 @@
+# Multi-stage build para el frontend Angular.
+#
+# El proyecto Angular vive en la raiz del repo (no en una carpeta
+# `frontend/`), asi que el build context de este Dockerfile es la raiz del
+# repo (ver `docker-compose.yml`, servicio `frontend`).
+
+# ---- Stage 1: build ----
+FROM node:24-alpine AS build
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+
+RUN npx ng build --configuration production
+
+# ---- Stage 2: imagen final servida con nginx ----
+FROM nginx:stable-alpine AS final
+
+# El builder @angular-devkit/build-angular:application usado por este
+# proyecto (ver angular.json, outputPath.base = "dist/oil-stations") mete
+# los estaticos servibles en un subdirectorio "browser/" dentro de eso.
+COPY --from=build /app/dist/oil-stations/browser /usr/share/nginx/html
+COPY docker/frontend/nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
