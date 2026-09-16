@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FacetItem(BaseModel):
@@ -9,8 +9,16 @@ class FacetItem(BaseModel):
 
 
 class FacetsResponse(BaseModel):
+    # `populate_by_name=True` permite seguir construyendo esta respuesta con
+    # `FacetsResponse(**facets_cache.value)` (donde `facets_cache.value` viene
+    # de un `model_dump()` previo por nombre de campo Python, no por alias) a
+    # la vez que el JSON de salida usa el alias camelCase `preciosMaximos`
+    # (FastAPI serializa `response_model` con `by_alias=True` por defecto).
+    model_config = ConfigDict(populate_by_name=True)
+
     provincias: list[FacetItem]
     estaciones: list[FacetItem]
+    precios_maximos: dict[str, float] = Field(default_factory=dict, alias="preciosMaximos")
 
 
 class ReindexTriggerResponse(BaseModel):

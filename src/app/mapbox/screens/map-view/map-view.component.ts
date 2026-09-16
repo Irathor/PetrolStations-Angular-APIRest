@@ -35,6 +35,7 @@ export class MapViewComponent implements OnInit, OnDestroy {
   provincias: FacetItem[] = [];
   estaciones: FacetItem[] = [];
   fuelOptions = FUEL_OPTIONS;
+  preciosMaximos: Partial<Record<FuelKey, number>> = {};
 
   selectedProvincias: string[] = [];
   selectedEstaciones: string[] = [];
@@ -104,6 +105,7 @@ export class MapViewComponent implements OnInit, OnDestroy {
     this.geolocationsService.getFacets().subscribe(facets => {
       this.provincias = facets.provincias;
       this.estaciones = facets.estaciones;
+      this.preciosMaximos = facets.preciosMaximos ?? {};
     });
 
     // Con el clustering ya no hace falta esperar a que el usuario filtre:
@@ -121,6 +123,12 @@ export class MapViewComponent implements OnInit, OnDestroy {
   @HostListener('window:resize')
   updateIsMobileViewport(){
     this.isMobileViewport = typeof window !== 'undefined' && window.innerWidth <= MOBILE_BREAKPOINT_PX;
+  }
+
+  /** Máximo real (redondeado hacia arriba) para el combustible seleccionado, o el máximo por defecto mientras no hay dato. */
+  get precioMaximoSlider(): number {
+    const max = this.preciosMaximos[this.selectedCombustible];
+    return max !== undefined ? Math.ceil(max) : DEFAULT_PRECIO_RANGE[1];
   }
 
   get activeFiltersCount(): number {
@@ -252,6 +260,14 @@ export class MapViewComponent implements OnInit, OnDestroy {
   selectCombustible(event: any){
     this.selectedCombustible = event.value;
     this.mapService.setFuelField(this.selectedCombustible);
+
+    // La barra puede cambiar de máximo al cambiar de combustible: si el
+    // extremo superior seleccionado ya no cabe en el nuevo rango, se ajusta.
+    const nuevoMaximo = this.precioMaximoSlider;
+    if(this.selectedPrecios[1] > nuevoMaximo){
+      this.selectedPrecios = [this.selectedPrecios[0], nuevoMaximo];
+    }
+
     this.applyFilters();
   }
 
