@@ -63,6 +63,28 @@ Ninguna.
       textos literales que no usaban la constante (`map.service.ts`,
       `favorites-panel.component.html`) se actualizan para reflejar el
       nuevo máximo.
+- [x] (Ampliación) El panel lateral mide siempre el 90% del alto de la
+      página (`top: 5vh; height: 90vh`), centrado verticalmente, en
+      cualquiera de sus tres estados.
+- [x] (Ampliación) La app bar superior de escritorio desaparece por
+      completo; su contenido (logo, buscador, selector de combustible,
+      centrar mapa, cambiar tema) pasa a vivir dentro del panel lateral. En
+      móvil se mantiene sin cambios (no hay panel lateral ahí). El selector
+      de combustible incorpora la etiqueta "Filtra por tipo de combustible".
+- [x] (Ampliación) El icono de la app (antes solo decorativo dentro de la
+      cabecera) asume la función del botón hamburguesa: es el único control
+      que colapsa/expande el panel. El botón hamburguesa independiente se
+      elimina.
+- [x] (Ampliación) En estado colapsado, en vez de mostrar solo el logo, se
+      siguen mostrando todos los botones (centrar mapa, cambiar tema,
+      Explorar, Cerca de mí, Favoritas, Filtros, Ruta, Comparar) como
+      botones cuadrados solo-icono (sin etiqueta de texto), apilados en
+      columna; siguen siendo funcionales y accesibles por teclado en ese
+      estado.
+- [x] (Ampliación) "Cerca de mí" deja de tener un botón de activación
+      independiente dentro de su sección: el propio botón de navegación
+      activa/desactiva la funcionalidad a la vez que abre/cierra su sección
+      (el radio de búsqueda), evitando el control duplicado.
 
 ## Alcance
 Frontend Angular (`src/app/mapbox/`): `app-side-panel` (nuevo, sustituye a
@@ -98,7 +120,26 @@ stack completo en Docker Compose, en 1400px (desktop) y 390px (móvil):
 - Móvil: `app-bottom-nav` con 6 iconos; tocar "Filtros" abre el drawer,
   tocar "Comparar" activa el modo de selección y muestra la barra flotante
   igual que en desktop.
+- (Ampliación) Desktop: la app bar superior queda oculta (verificado que no
+  ocupa layout, no solo `[hidden]` visual); el panel mide 90% del alto,
+  centrado; clic en el logo colapsa/expande (56px↔260px↔380px); en
+  colapsado los 8 botones (2 de cabecera + 6 de navegación) siguen visibles
+  como iconos sin texto y siguen abriendo su sección directamente; "Cerca
+  de mí" activa y abre su sección en el mismo clic, y el segundo clic
+  desactiva y cierra a la vez.
+- (Ampliación) Móvil: la app bar (con buscador/combustible/centrar mapa/
+  tema) se sigue mostrando sin cambios, confirmando que ocultar la barra en
+  desktop no afectó al layout móvil.
 - `ng build` y `ng test` (11 tests, 3 suites) en verde.
+
+**Bug encontrado y corregido durante esta verificación**: la primera
+implementación ocultaba la app bar de escritorio con `[hidden]`, pero
+`.card` fija su propio `display: flex` en CSS, que en la cascada gana
+siempre a la regla del user-agent para `[hidden]` (incluso con igual
+especificidad, el origen "autor" tiene prioridad sobre "user-agent") — la
+barra seguía ocupando espacio. Se solucionó envolviendo ese bloque en
+`@if (isMobileViewport)` en vez de `[hidden]`, que sí retira el elemento
+del DOM.
 
 Esta Epic sustituye criterios de aceptación ya cerrados de EPIC-4 (nueva
 shell de navegación: el menú ☰ flotante y el punto de entrada de "Cerca de

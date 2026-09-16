@@ -1,15 +1,16 @@
 .side-panel{
     position: fixed;
     left: 16px;
-    top: 100px;
+    top: 5vh;
+    height: 90vh;
     z-index: 5;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    width: 52px;
-    max-height: calc(100vh - 140px);
+    width: 56px;
     padding: 8px;
     overflow-y: auto;
+    overflow-x: hidden;
     background-color: var(--color-bg-surface);
     background-clip: border-box;
     border: 1px solid var(--color-accent);
@@ -18,11 +19,11 @@
 }
 
 .side-panel--base{
-    width: 240px;
+    width: 260px;
 }
 
 .side-panel--section{
-    width: 360px;
+    width: 380px;
 }
 
 /* Mismo patrón que .card en map-view.component.css, aplicado aquí de forma
@@ -36,48 +37,103 @@
     opacity: 1;
 }
 
-.side-panel-trigger{
+/* El icono de la app hace de botón de menú: colapsa/expande el panel. */
+.side-panel__brand-toggle{
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+    width: 100%;
     flex-shrink: 0;
     border: none;
     border-radius: 3px;
     background: none;
-    color: rgba(255, 255, 255, 0.77);
     cursor: pointer;
-    font-size: 1rem;
-    transition: background-color 0.15s, color 0.15s;
+    padding: 4px;
+    transition: background-color 0.15s;
 }
 
-.side-panel-trigger:hover{
+.side-panel__brand-toggle:hover{
     background-color: rgba(117, 190, 248, 0.15);
-    color: #ffffff;
 }
 
-.side-panel-trigger:focus-visible{
+.side-panel__brand-toggle:focus-visible{
     outline: none;
     box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
 
-.side-panel-trigger__badge{
+.side-panel__brand-logo{
+    display: block;
+    height: 32px;
+    width: auto;
+    max-width: 100%;
+}
+
+.side-panel__brand-toggle-badge{
     position: absolute;
-    top: 6px;
-    right: 6px;
+    top: 2px;
+    right: 2px;
     width: 8px;
     height: 8px;
     border-radius: 50%;
     background-color: var(--color-favorite);
 }
 
-.side-panel__body{
+/* Centrar mapa / cambiar tema: en colapsado, apilados en columna con el
+   resto de iconos del riel; en expandido, en fila bajo la marca. */
+.side-panel__header-actions{
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    min-width: 0;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.side-panel--base .side-panel__header-actions,
+.side-panel--section .side-panel__header-actions{
+    flex-direction: row;
+    justify-content: center;
+}
+
+.side-panel__search{
+    position: relative;
+    flex-shrink: 0;
+}
+
+.side-panel__search-input{
+    width: 100%;
+}
+
+.side-panel__search app-search-results{
+    display: block;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1;
+    background-color: var(--color-bg-surface);
+    border-radius: 3px;
+    border: 1px solid var(--color-accent);
+    text-align: center;
+    padding-top: 10px;
+}
+
+.side-panel__fuel{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.side-panel__fuel label{
+    margin: 0;
+    color: rgba(255, 255, 255, 0.87);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.side-panel__fuel .p-select{
+    width: 100%;
 }
 
 .side-panel__nav{
@@ -99,6 +155,13 @@
     font-size: 0.95rem;
     text-align: left;
     cursor: pointer;
+}
+
+/* Colapsado: sin texto (no se renderiza el <span>), el icono (y su badge,
+   si tiene) se centran en el botón cuadrado en vez de quedar a la izquierda. */
+.side-panel:not(.side-panel--base):not(.side-panel--section) .side-panel__item{
+    justify-content: center;
+    padding: 8px;
 }
 
 .side-panel__item:hover,

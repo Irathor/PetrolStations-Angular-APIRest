@@ -107,37 +107,6 @@ app-search-results {
     margin-right: 10px;
 }
 
-.icon-action-btn{
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border: none;
-    border-radius: 3px;
-    background: none;
-    color: rgba(255, 255, 255, 0.77);
-    cursor: pointer;
-    font-size: 1rem;
-    transition: background-color 0.15s, color 0.15s;
-}
-
-.icon-action-btn:hover{
-    background-color: rgba(117, 190, 248, 0.15);
-    color: #ffffff;
-}
-
-.icon-action-btn:focus-visible{
-    outline: none;
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-}
-
-.icon-action-btn.active{
-    color: var(--color-accent);
-    background-color: rgba(117, 190, 248, 0.15);
-}
-
 .default-location-notice{
     position: absolute;
     /* Debajo de la app bar (~78px de alto), no encima: con top:10px se

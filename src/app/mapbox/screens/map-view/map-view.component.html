@@ -26,59 +26,65 @@
   </div>
 }
 
-<div class="card">
-  <p-menubar class="menu">
-    <ng-template pTemplate="start">
-      <div class="appbar">
-        <div class="appbar__brand">
-          <img src="./../../../../assets/fuelfinder-logo-full.png" alt="FuelFinder" height="64" />
+<!-- En escritorio, todo esto vive en app-side-panel; esta app bar solo se
+     usa en móvil, donde no hay panel lateral (ver isMobileViewport). Se usa
+     @if (no [hidden]) porque .card fija su propio "display: flex", que en
+     la cascada gana siempre a la regla del user-agent para [hidden]. -->
+@if (isMobileViewport) {
+  <div class="card">
+    <p-menubar class="menu">
+      <ng-template pTemplate="start">
+        <div class="appbar">
+          <div class="appbar__brand">
+            <img src="./../../../../assets/fuelfinder-logo-full.png" alt="FuelFinder" height="64" />
+          </div>
+
+          <div class="appbar__search">
+            <p-iconfield iconPosition="left">
+              <p-inputicon class="pi pi-search" />
+              <label for="txtQuery" class="sr-only">Buscar lugar o dirección</label>
+              <input type="text"
+                id="txtQuery"
+                pInputText
+                placeholder="Buscar..."
+                class="search-input"
+                #txtQuery
+                (keyup)="onQueryChanged(txtQuery.value)"/>
+            </p-iconfield>
+
+            @if (infoReady) {
+              <app-search-results></app-search-results>
+            }
+          </div>
+
+          <div class="appbar__actions">
+            <p-select class="selectMenu"
+              [options]="fuelOptions"
+              optionLabel="label"
+              optionValue="key"
+              [(ngModel)]="selectedCombustible"
+              (onChange)="selectCombustible($event.value)"
+              aria-label="Combustible" />
+
+            <button type="button" class="icon-action-btn"
+              pTooltip="Centrar el mapa en tu ubicación" tooltipPosition="bottom"
+              aria-label="Centrar el mapa en tu ubicación"
+              (click)="centrarMapa()">
+              <i class="pi pi-map"></i>
+            </button>
+
+            <button type="button" class="icon-action-btn"
+              pTooltip="Cambiar entre mapa oscuro y mapa normal" tooltipPosition="bottom"
+              aria-label="Cambiar el estilo del mapa"
+              (click)="toggleMapStyle()">
+              <i class="pi" [class.pi-sun]="isDarkMap" [class.pi-moon]="!isDarkMap"></i>
+            </button>
+          </div>
         </div>
-
-        <div class="appbar__search">
-          <p-iconfield iconPosition="left">
-            <p-inputicon class="pi pi-search" />
-            <label for="txtQuery" class="sr-only">Buscar lugar o dirección</label>
-            <input type="text"
-              id="txtQuery"
-              pInputText
-              placeholder="Buscar..."
-              class="search-input"
-              #txtQuery
-              (keyup)="onQueryChanged(txtQuery.value)"/>
-          </p-iconfield>
-
-          @if (infoReady) {
-            <app-search-results></app-search-results>
-          }
-        </div>
-
-        <div class="appbar__actions">
-          <p-select class="selectMenu"
-            [options]="fuelOptions"
-            optionLabel="label"
-            optionValue="key"
-            [(ngModel)]="selectedCombustible"
-            (onChange)="selectCombustible($event)"
-            aria-label="Combustible" />
-
-          <button type="button" class="icon-action-btn"
-            pTooltip="Centrar el mapa en tu ubicación" tooltipPosition="bottom"
-            aria-label="Centrar el mapa en tu ubicación"
-            (click)="centrarMapa()">
-            <i class="pi pi-map"></i>
-          </button>
-
-          <button type="button" class="icon-action-btn"
-            pTooltip="Cambiar entre mapa oscuro y mapa normal" tooltipPosition="bottom"
-            aria-label="Cambiar el estilo del mapa"
-            (click)="toggleMapStyle()">
-            <i class="pi" [class.pi-sun]="isDarkMap" [class.pi-moon]="!isDarkMap"></i>
-          </button>
-        </div>
-      </div>
-    </ng-template>
-  </p-menubar>
-</div>
+      </ng-template>
+    </p-menubar>
+  </div>
+}
 
 <app-side-panel [hidden]="isMobileViewport"
   [nearMeActive]="nearMeActive"
@@ -93,13 +99,16 @@
   [selectedEstaciones]="selectedEstaciones"
   [selectedPrecios]="selectedPrecios"
   [precioMaximoSlider]="precioMaximoSlider"
+  [infoReady]="infoReady"
   (explorar)="explorar()"
   (nearMeToggle)="toggleNearMe()"
   (nearMeRadiusChange)="changeNearMeRadius($event)"
   (favoritesOnlyToggle)="toggleFavoritesOnly()"
   (provinciaChange)="selectProvincia($event)"
   (estacionChange)="selectEstacion($event)"
-  (precioChange)="selectPrecio($event)" />
+  (precioChange)="selectPrecio($event)"
+  (combustibleChange)="selectCombustible($event)"
+  (queryChanged)="onQueryChanged($event)" />
 
 <p-drawer [(visible)]="filtersDrawerVisible"
   [position]="isMobileViewport ? 'bottom' : 'right'"

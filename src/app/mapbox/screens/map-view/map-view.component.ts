@@ -283,8 +283,8 @@ export class MapViewComponent implements OnInit, OnDestroy {
     this.applyFilters({ precio });
   }
 
-  selectCombustible(event: any){
-    this.selectedCombustible = event.value;
+  selectCombustible(combustible: FuelKey){
+    this.selectedCombustible = combustible;
     this.mapService.setFuelField(this.selectedCombustible);
 
     // La barra puede cambiar de máximo al cambiar de combustible: si el
