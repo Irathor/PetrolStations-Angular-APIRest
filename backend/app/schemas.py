@@ -9,11 +9,14 @@ class FacetItem(BaseModel):
 
 
 class FacetsResponse(BaseModel):
-    # `populate_by_name=True` permite seguir construyendo esta respuesta con
-    # `FacetsResponse(**facets_cache.value)` (donde `facets_cache.value` viene
-    # de un `model_dump()` previo por nombre de campo Python, no por alias) a
-    # la vez que el JSON de salida usa el alias camelCase `preciosMaximos`
-    # (FastAPI serializa `response_model` con `by_alias=True` por defecto).
+    # `populate_by_name=True` hace falta porque `routers/facets.py` construye
+    # esta respuesta con el nombre de campo Python (`FacetsResponse(...,
+    # precios_maximos=...)`) — sin él, Pydantic v2 solo aceptaría el alias
+    # como kwarg de construcción. El alias camelCase (`preciosMaximos`) es lo
+    # que expone el JSON (FastAPI serializa `response_model` con
+    # `by_alias=True` por defecto) y también lo que usa la caché
+    # (`facets_cache.value`, guardada y releída por alias con
+    # `model_dump(by_alias=True)`/`model_validate(...)`).
     model_config = ConfigDict(populate_by_name=True)
 
     provincias: list[FacetItem]

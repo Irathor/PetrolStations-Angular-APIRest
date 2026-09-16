@@ -17,3 +17,13 @@ export function haversineKm(a: number[], b: number[]): number {
 
     return 2 * R * Math.asin(Math.sqrt(h));
 }
+
+/**
+ * Orden por defecto de las listas de estaciones (favoritas, comparador): más
+ * cercana primero, y a igual distancia (o sin distancia conocida, ambas
+ * `undefined`), alfabético por nombre. Extraído porque `favorites-panel` y
+ * `comparison-dialog` construían el mismo comparador por separado.
+ */
+export function sortByDistanceThenName<T extends { distanceKm?: number; name: string }>(a: T, b: T): number {
+    return (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity) || a.name.localeCompare(b.name);
+}

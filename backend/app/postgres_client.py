@@ -108,6 +108,51 @@ def _conninfo() -> str:
     )
 
 
+async def _execute(*statements: tuple) -> None:
+    """Ejecuta una o más sentencias (SQL, params) en una única conexión y
+    hace commit al final. Cada elemento es `(sql, params)`, o `(sql, params,
+    "many")` para usar `executemany` (ver `extract_raw_to_postgres`). Reúne
+    el patrón connect+cursor+commit que se repetía en cada función de
+    escritura de este módulo."""
+
+    async with await psycopg.AsyncConnection.connect(_conninfo()) as conn:
+        async with conn.cursor() as cur:
+            for statement in statements:
+                sql, params, *mode = statement
+                if mode == ["many"]:
+                    await cur.executemany(sql, params)
+                else:
+                    await cur.execute(sql, params)
+        await conn.commit()
+
+
+async def _fetch_one(*setup_statements: tuple, query: tuple) -> tuple | None:
+    """Ejecuta sentencias de preparación (p. ej. `CREATE TABLE IF NOT
+    EXISTS`) y luego una consulta, devolviendo la primera fila o `None`."""
+
+    async with await psycopg.AsyncConnection.connect(_conninfo()) as conn:
+        async with conn.cursor() as cur:
+            for sql, params in setup_statements:
+                await cur.execute(sql, params)
+            await cur.execute(*query)
+            return await cur.fetchone()
+
+
+async def _fetch_all_as_dicts(*setup_statements: tuple, query: tuple) -> list[dict]:
+    """Igual que `_fetch_one`, pero devuelve todas las filas como `dict`
+    (columna → valor), usando los nombres de columna reales de la consulta."""
+
+    async with await psycopg.AsyncConnection.connect(_conninfo()) as conn:
+        async with conn.cursor() as cur:
+            for sql, params in setup_statements:
+                await cur.execute(sql, params)
+            await cur.execute(*query)
+            columns = [desc.name for desc in cur.description]
+            rows = await cur.fetchall()
+
+    return [dict(zip(columns, row)) for row in rows]
+
+
 async def extract_raw_to_postgres(raw_stations: list[dict], run_id: str | None = None) -> str:
     """Inserta el dump crudo de la API del Gobierno en `gasolineras.raw_stations`,
     una fila por estación, todas etiquetadas con el mismo `run_id` para que
@@ -118,17 +163,15 @@ async def extract_raw_to_postgres(raw_stations: list[dict], run_id: str | None =
     run_id = run_id or str(uuid4())
     ingested_at = datetime.now(timezone.utc)
 
-    async with await psycopg.AsyncConnection.connect(_conninfo()) as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(CREATE_RAW_TABLE_SQL)
-            await cur.execute(CREATE_RAW_TABLE_INDEXES_SQL)
-
-            rows = [
-                (run_id, ingested_at, raw.get("IDEESS"), Jsonb(raw))
-                for raw in raw_stations
-            ]
-            await cur.executemany(INSERT_RAW_ROW_SQL, rows)
-        await conn.commit()
+    rows = [
+        (run_id, ingested_at, raw.get("IDEESS"), Jsonb(raw))
+        for raw in raw_stations
+    ]
+    await _execute(
+        (CREATE_RAW_TABLE_SQL, None),
+        (CREATE_RAW_TABLE_INDEXES_SQL, None),
+        (INSERT_RAW_ROW_SQL, rows, "many"),
+    )
 
     logger.info(
         "Insertadas %s filas crudas en gasolineras.raw_stations (run_id=%s).",
@@ -152,14 +195,10 @@ async def record_ingestion_run(
     `gasolineras_ingestion` (EPIC-2). La llama la tarea `record_run_status`
     del DAG, siempre, incluso si alguna tarea previa falló."""
 
-    async with await psycopg.AsyncConnection.connect(_conninfo()) as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(CREATE_INGESTION_RUNS_TABLE_SQL)
-            await cur.execute(
-                UPSERT_INGESTION_RUN_SQL,
-                (run_id, started_at, finished_at, success, source_total, indexed, pruned, error),
-            )
-        await conn.commit()
+    await _execute(
+        (CREATE_INGESTION_RUNS_TABLE_SQL, None),
+        (UPSERT_INGESTION_RUN_SQL, (run_id, started_at, finished_at, success, source_total, indexed, pruned, error)),
+    )
 
     logger.info(
         "Registrada ejecución de ingesta run_id=%s success=%s en gasolineras.ingestion_runs.",
@@ -173,16 +212,11 @@ async def fetch_latest_ingestion_run() -> dict | None:
     `GET /api/admin/status` (EPIC-2)."""
 
     columns = ["run_id", "started_at", "finished_at", "success", "source_total", "indexed", "pruned", "error"]
-
-    async with await psycopg.AsyncConnection.connect(_conninfo()) as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(CREATE_INGESTION_RUNS_TABLE_SQL)
-            await cur.execute(SELECT_LATEST_INGESTION_RUN_SQL)
-            row = await cur.fetchone()
-
-    if row is None:
-        return None
-    return dict(zip(columns, row))
+    row = await _fetch_one(
+        (CREATE_INGESTION_RUNS_TABLE_SQL, None),
+        query=(SELECT_LATEST_INGESTION_RUN_SQL, None),
+    )
+    return dict(zip(columns, row)) if row is not None else None
 
 
 async def fetch_stations_current() -> list[dict]:
@@ -190,13 +224,7 @@ async def fetch_stations_current() -> list[dict]:
     ver `dbt/models/marts/stations_current.sql`) para que la tarea
     `load_to_solr` del DAG pueda remapearlas al formato de Solr (EPIC-2)."""
 
-    async with await psycopg.AsyncConnection.connect(_conninfo()) as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(SELECT_STATIONS_CURRENT_SQL)
-            columns = [desc.name for desc in cur.description]
-            rows = await cur.fetchall()
-
-    return [dict(zip(columns, row)) for row in rows]
+    return await _fetch_all_as_dicts(query=(SELECT_STATIONS_CURRENT_SQL, None))
 
 
 async def fetch_price_history(ideess: str) -> list[dict]:
@@ -206,10 +234,4 @@ async def fetch_price_history(ideess: str) -> list[dict]:
     la comprobación de si la estación existe la hace el router contra Solr,
     no esta función."""
 
-    async with await psycopg.AsyncConnection.connect(_conninfo()) as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(SELECT_PRICE_HISTORY_SQL, (ideess,))
-            columns = [desc.name for desc in cur.description]
-            rows = await cur.fetchall()
-
-    return [dict(zip(columns, row)) for row in rows]
+    return await _fetch_all_as_dicts(query=(SELECT_PRICE_HISTORY_SQL, (ideess,)))

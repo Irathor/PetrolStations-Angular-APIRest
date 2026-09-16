@@ -5,6 +5,7 @@ import { FavoritesService, MapService, ComparisonService } from '../../services'
 import { FavoriteStation } from '../../services/map.service';
 import { FUEL_PROPERTY, FuelKey } from '../../interfaces/fuel';
 import { describeSchedule, ScheduleStatus } from '../../utils/schedule';
+import { sortByDistanceThenName } from '../../utils/geo';
 import { OilStationProperties } from '../../interfaces/oilstations';
 
 interface FavoriteStationRow {
@@ -97,7 +98,7 @@ export class FavoritesPanelComponent implements OnInit, OnChanges, OnDestroy {
         schedule: describeSchedule(station.feature.properties.Horario),
         station
       }))
-      .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity) || a.name.localeCompare(b.name));
+      .sort(sortByDistanceThenName);
   }
 
   focusStation(row: FavoriteStationRow){

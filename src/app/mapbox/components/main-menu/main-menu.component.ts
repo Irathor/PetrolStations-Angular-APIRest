@@ -1,5 +1,4 @@
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
-import { Subscription } from 'rxjs';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 
 import { FuelKey } from '../../interfaces/fuel';
 import { ComparisonService } from '../../services';
@@ -19,7 +18,7 @@ export const NEAR_ME_RADIUS_OPTIONS_KM = [2, 5, 10, 25, 50];
   styleUrls: ['./main-menu.component.css'],
   standalone: false
 })
-export class MainMenuComponent implements OnInit, OnDestroy {
+export class MainMenuComponent {
 
   @Input() nearMeActive = false;
   @Input() nearMeRadiusKm = 10;
@@ -41,21 +40,14 @@ export class MainMenuComponent implements OnInit, OnDestroy {
   routePlannerVisible = false;
   comparisonVisible = false;
 
-  /** Cuántas gasolineras hay seleccionadas para comparar (badge del menú). Se lee directamente de ComparisonService, igual que favoritesCount se recibe por Input desde el padre para el contador de favoritas. */
-  comparisonCount = 0;
-  private comparisonSubscription?: Subscription;
-
   constructor(private readonly comparisonService: ComparisonService) { }
 
-  ngOnInit(): void {
-    this.comparisonCount = this.comparisonService.getAll().length;
-    this.comparisonSubscription = this.comparisonService.changes$.subscribe(
-      () => this.comparisonCount = this.comparisonService.getAll().length
-    );
-  }
-
-  ngOnDestroy(): void {
-    this.comparisonSubscription?.unsubscribe();
+  /** Cuántas gasolineras hay seleccionadas para comparar (badge del menú).
+   * Se lee directamente de `ComparisonService.count` en cada ciclo de
+   * detección de cambios — no hace falta duplicarlo en un campo propio ni
+   * suscribirse a `changes$` solo para mantenerlo sincronizado. */
+  get comparisonCount(): number {
+    return this.comparisonService.count;
   }
 
   onExplorar(){

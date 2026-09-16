@@ -5,6 +5,7 @@ import { ComparisonService, MapService } from '../../services';
 import { FUEL_OPTIONS, FUEL_PROPERTY, FuelKey } from '../../interfaces/fuel';
 import { OilStationProperties } from '../../interfaces/oilstations';
 import { describeSchedule, ScheduleStatus } from '../../utils/schedule';
+import { sortByDistanceThenName } from '../../utils/geo';
 
 export const MIN_STATIONS_TO_COMPARE = 2;
 
@@ -115,7 +116,7 @@ export class ComparisonDialogComponent implements OnInit, OnChanges, OnDestroy {
           tripCost
         };
       })
-      .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity) || a.name.localeCompare(b.name));
+      .sort(sortByDistanceThenName);
   }
 
 }

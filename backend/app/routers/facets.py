@@ -46,7 +46,7 @@ async def get_facets():
     resolverlo aquí sin que el usuario lo priorice."""
 
     if facets_cache.value is not None:
-        return FacetsResponse(**facets_cache.value)
+        return FacetsResponse.model_validate(facets_cache.value)
 
     params = {
         "q": "*:*",
@@ -80,5 +80,5 @@ async def get_facets():
         estaciones=_parse_facet_pairs(fields.get("Estacion", [])),
         precios_maximos=_parse_precios_maximos(stats_fields),
     )
-    facets_cache.value = response.model_dump()
+    facets_cache.value = response.model_dump(by_alias=True)
     return response

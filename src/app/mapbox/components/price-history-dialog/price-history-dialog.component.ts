@@ -37,6 +37,15 @@ export class PriceHistoryDialogComponent implements OnChanges {
   errorMessage?: string;
   private history: PriceHistoryEntry[] = [];
 
+  /** Puntos con dato para el combustible actualmente seleccionado en el
+   * diálogo, ya ordenados por fecha (el backend los devuelve ascendentes).
+   * Se recalcula solo cuando cambian `history`/`localFuel` (ver
+   * `_recomputePoints`), en vez de en cada ciclo de detección de cambios:
+   * de la plantilla lo leen `hasDataForFuel`, `currentPoint`, `firstPoint`,
+   * `minPrice`, `maxPrice` y `chartData`, así que como getter habría
+   * repetido el mismo filter+map hasta 6 veces por ciclo. */
+  points: PricePoint[] = [];
+
   constructor(private readonly priceHistoryApi: PriceHistoryApiClient) { }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -49,17 +58,11 @@ export class PriceHistoryDialogComponent implements OnChanges {
   onLocalFuelChange(){
     // Cambiar el combustible no requiere una nueva petición: ya tenemos todo
     // el histórico descargado, solo cambia qué claves de "precios" se leen.
+    this._recomputePoints();
   }
 
   get fuelLabel(): string {
     return FUEL_LABEL[this.localFuel];
-  }
-
-  /** Puntos con dato para el combustible actualmente seleccionado en el diálogo, ya ordenados por fecha (el backend los devuelve ascendentes). */
-  get points(): PricePoint[] {
-    return this.history
-      .filter(entry => this.localFuel in entry.precios)
-      .map(entry => ({ date: entry.valid_from, price: entry.precios[this.localFuel] as number }));
   }
 
   get hasAnyHistory(): boolean {
@@ -127,6 +130,7 @@ export class PriceHistoryDialogComponent implements OnChanges {
 
   private fetchHistory(){
     this.history = [];
+    this._recomputePoints();
     this.errorMessage = undefined;
 
     if(!this.stationId){
@@ -139,6 +143,7 @@ export class PriceHistoryDialogComponent implements OnChanges {
       next: response => {
         this.isLoading = false;
         this.history = response.history;
+        this._recomputePoints();
       },
       error: error => {
         this.isLoading = false;
@@ -147,6 +152,12 @@ export class PriceHistoryDialogComponent implements OnChanges {
           : 'No se ha podido cargar el histórico de precios. Inténtalo de nuevo.';
       }
     });
+  }
+
+  private _recomputePoints(){
+    this.points = this.history
+      .filter(entry => this.localFuel in entry.precios)
+      .map(entry => ({ date: entry.valid_from, price: entry.precios[this.localFuel] as number }));
   }
 
 }
