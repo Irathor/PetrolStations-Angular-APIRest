@@ -91,6 +91,7 @@ export class GeolocationsService {
     if(query.length === 0){
       this.isLoadingPlaces = false;
       this.hideMenuPlaces();
+      this.mapService.clearPlaceMarkers();
       return;
     }
 

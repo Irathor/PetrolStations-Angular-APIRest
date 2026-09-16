@@ -318,6 +318,12 @@ export class MapService {
     });
   }
 
+  /** Quita del mapa los marcadores creados por la búsqueda de lugares (ver createMarkersFromPlaces). */
+  clearPlaceMarkers(){
+    this.markers.forEach(marker => marker.remove());
+    this.markers = [];
+  }
+
   createMarkersFromPlaces(places: Feature[], userLocation: [number, number]){
     if(!this.map){
       throw Error('Mapa no disponible');
