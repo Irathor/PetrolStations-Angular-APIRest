@@ -138,34 +138,6 @@ app-search-results {
     background-color: rgba(117, 190, 248, 0.15);
 }
 
-/* Contenido del p-drawer de filtros (provincia/marca/precio; el combustible
-   vive en el app bar, siempre visible, ver criterio de aceptación 1). */
-.filters-drawer{
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    padding: 4px 2px;
-}
-
-.filtro{
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.filtro label,
-.filtro .precioLabel{
-    margin: 0;
-    color: rgba(255, 255, 255, 0.87);
-    font-size: 0.85rem;
-    font-weight: 600;
-}
-
-.filtro .p-multiselect,
-.filtro .p-slider{
-    width: 100%;
-}
-
 .default-location-notice{
     position: absolute;
     /* Debajo de la app bar (~78px de alto), no encima: con top:10px se
@@ -210,11 +182,6 @@ app-search-results {
     opacity: 1;
 }
 
-@keyframes menuFadeToTranslucent{
-    from{ opacity: 1; }
-    to{ opacity: 0.2; }
-}
-
 .oil-stations-status{
     position: absolute;
     /* Mismo motivo que .default-location-notice: debajo de la app bar,
@@ -243,6 +210,57 @@ app-search-results {
 .status-spinner{
     width: 18px;
     height: 18px;
+}
+
+/* Barra flotante del modo de selección en el mapa para comparar (EPIC-8).
+   Vive aquí (no en app-side-panel/app-bottom-nav) para ser visible y
+   funcional con independencia de si el panel lateral está colapsado, o de
+   si estamos en desktop o móvil: un único punto de verdad. */
+.comparison-mode-bar{
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-radius: 24px;
+    background-color: var(--color-bg-surface);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    color: rgba(255, 255, 255, 0.87);
+    font-size: 0.85rem;
+}
+
+.comparison-mode-bar__count{
+    white-space: nowrap;
+}
+
+.comparison-mode-bar__action,
+.comparison-mode-bar__exit{
+    border: none;
+    border-radius: 16px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.comparison-mode-bar__action{
+    background-color: var(--color-accent);
+    color: var(--color-bg-surface);
+}
+
+.comparison-mode-bar__action:disabled{
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.comparison-mode-bar__exit{
+    background: none;
+    color: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 /* Oculta visualmente pero mantiene accesible para lectores de pantalla. */
@@ -297,5 +315,10 @@ app-search-results {
         width: fit-content;
         max-width: 90vw;
         text-align: center;
+    }
+
+    /* La bottom navigation fija ocupa la franja inferior: la barra de comparación se coloca justo encima. */
+    .comparison-mode-bar{
+        bottom: calc(64px + env(safe-area-inset-bottom, 0px));
     }
 }

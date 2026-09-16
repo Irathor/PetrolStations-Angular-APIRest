@@ -74,77 +74,76 @@
             (click)="toggleMapStyle()">
             <i class="pi" [class.pi-sun]="isDarkMap" [class.pi-moon]="!isDarkMap"></i>
           </button>
-
-          <app-main-menu
-            [nearMeActive]="nearMeActive"
-            [nearMeRadiusKm]="nearMeRadiusKm"
-            [favoritesOnly]="favoritesOnly"
-            [favoritesCount]="favoritesCount"
-            [activeFiltersCount]="activeFiltersCount"
-            [selectedCombustible]="selectedCombustible"
-            (explorar)="explorar()"
-            (nearMeToggle)="toggleNearMe()"
-            (nearMeRadiusChange)="changeNearMeRadius($event)"
-            (favoritesOnlyToggle)="toggleFavoritesOnly()"
-            (openFilters)="openFilters()" />
         </div>
       </div>
     </ng-template>
   </p-menubar>
 </div>
 
+<app-side-panel [hidden]="isMobileViewport"
+  [nearMeActive]="nearMeActive"
+  [nearMeRadiusKm]="nearMeRadiusKm"
+  [favoritesOnly]="favoritesOnly"
+  [favoritesCount]="favoritesCount"
+  [activeFiltersCount]="activeFiltersCount"
+  [selectedCombustible]="selectedCombustible"
+  [provincias]="provincias"
+  [estaciones]="estaciones"
+  [selectedProvincias]="selectedProvincias"
+  [selectedEstaciones]="selectedEstaciones"
+  [selectedPrecios]="selectedPrecios"
+  [precioMaximoSlider]="precioMaximoSlider"
+  (explorar)="explorar()"
+  (nearMeToggle)="toggleNearMe()"
+  (nearMeRadiusChange)="changeNearMeRadius($event)"
+  (favoritesOnlyToggle)="toggleFavoritesOnly()"
+  (provinciaChange)="selectProvincia($event)"
+  (estacionChange)="selectEstacion($event)"
+  (precioChange)="selectPrecio($event)" />
+
 <p-drawer [(visible)]="filtersDrawerVisible"
   [position]="isMobileViewport ? 'bottom' : 'right'"
   [style]="isMobileViewport ? { height: '75vh' } : { width: '22rem' }"
   header="Filtros">
-  <div class="filters-drawer">
-    <div class="filtro">
-      <label id="provinciaLabel">Provincia</label>
-      <p-multiSelect
-        [options]="provincias"
-        optionLabel="name"
-        optionValue="name"
-        defaultLabel="Selecciona la Provincia"
-        [selectionLimit]="4"
-        [(ngModel)]="selectedProvincias"
-        (onChange)="selectProvincia($event)"
-        ariaLabelledBy="provinciaLabel">
-        <ng-template #item let-provincia>
-          {{provincia.name | titlecase}}
-        </ng-template>
-      </p-multiSelect>
-    </div>
-
-    <div class="filtro">
-      <label id="estacionLabel">Marca</label>
-      <p-multiSelect
-        [options]="estaciones"
-        optionLabel="name"
-        optionValue="name"
-        defaultLabel="Selecciona la Estación"
-        [selectionLimit]="4"
-        [(ngModel)]="selectedEstaciones"
-        (onChange)="selectEstacion($event)"
-        ariaLabelledBy="estacionLabel">
-        <ng-template #item let-estacion>
-          {{estacion.name | titlecase}}
-        </ng-template>
-      </p-multiSelect>
-    </div>
-
-    <div class="filtro">
-      <h5 class="precioLabel" id="precioLabel">Precio: {{selectedPrecios[0] + '€ - ' + selectedPrecios[1] + '€'}}</h5>
-      <p-slider
-        [(ngModel)]="selectedPrecios"
-        [range]="true"
-        [min]="0.00"
-        [max]="precioMaximoSlider"
-        [step]="0.01"
-        ariaLabelledBy="precioLabel"
-        (onSlideEnd)="selectPrecio($event)"></p-slider>
-    </div>
-  </div>
+  <app-filters-panel
+    [provincias]="provincias"
+    [estaciones]="estaciones"
+    [selectedProvincias]="selectedProvincias"
+    [selectedEstaciones]="selectedEstaciones"
+    [selectedPrecios]="selectedPrecios"
+    [precioMaximoSlider]="precioMaximoSlider"
+    (provinciaChange)="selectProvincia($event)"
+    (estacionChange)="selectEstacion($event)"
+    (precioChange)="selectPrecio($event)" />
 </p-drawer>
+
+@if (comparisonSelectionActive) {
+  <div class="comparison-mode-bar" role="status" aria-live="polite">
+    <span class="comparison-mode-bar__count">
+      {{ comparisonCount }} {{ comparisonCount === 1 ? 'gasolinera seleccionada' : 'gasolineras seleccionadas' }}
+    </span>
+    <button type="button" class="comparison-mode-bar__action"
+      [disabled]="comparisonCount < minStationsToCompare"
+      (click)="openComparisonTable()">
+      Ver comparativa
+    </button>
+    <button type="button" class="comparison-mode-bar__exit"
+      aria-label="Salir del modo de selección"
+      (click)="exitComparisonMode()">
+      Salir
+    </button>
+  </div>
+}
+
+<p-dialog header="Comparar gasolineras"
+  [(visible)]="comparisonVisible"
+  [modal]="true"
+  [dismissableMask]="true"
+  [style]="{ width: '50rem', maxWidth: '95vw' }">
+  @if (comparisonVisible) {
+    <app-comparison-dialog [selectedCombustible]="selectedCombustible" />
+  }
+</p-dialog>
 
 <p-dialog header="Evolución de precios"
   [(visible)]="priceHistoryVisible"
@@ -160,7 +159,12 @@
   [nearMeActive]="nearMeActive"
   [favoritesOnly]="favoritesOnly"
   [hasActiveRoute]="hasActiveRoute"
+  [activeFiltersCount]="activeFiltersCount"
+  [comparisonSelectionActive]="comparisonSelectionActive"
+  [comparisonCount]="comparisonCount"
   (explorar)="explorar()"
   (nearMeToggle)="toggleNearMe()"
   (favoritesOnlyToggle)="toggleFavoritesOnly()"
-  (focusRoute)="focusActiveRoute()" />
+  (focusRoute)="focusActiveRoute()"
+  (openFilters)="openFilters()"
+  (toggleComparisonMode)="toggleComparisonSelectionMode()" />

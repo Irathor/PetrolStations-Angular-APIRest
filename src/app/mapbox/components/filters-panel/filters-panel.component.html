@@ -1,0 +1,47 @@
+<div class="filters-panel">
+  <div class="filtro">
+    <label id="provinciaLabel">Provincia</label>
+    <p-multiSelect
+      [options]="provincias"
+      optionLabel="name"
+      optionValue="name"
+      defaultLabel="Selecciona la Provincia"
+      [selectionLimit]="4"
+      [(ngModel)]="selectedProvincias"
+      (onChange)="onProvinciaChange($event)"
+      ariaLabelledBy="provinciaLabel">
+      <ng-template #item let-provincia>
+        {{provincia.name | titlecase}}
+      </ng-template>
+    </p-multiSelect>
+  </div>
+
+  <div class="filtro">
+    <label id="estacionLabel">Marca</label>
+    <p-multiSelect
+      [options]="estaciones"
+      optionLabel="name"
+      optionValue="name"
+      defaultLabel="Selecciona la Estación"
+      [selectionLimit]="4"
+      [(ngModel)]="selectedEstaciones"
+      (onChange)="onEstacionChange($event)"
+      ariaLabelledBy="estacionLabel">
+      <ng-template #item let-estacion>
+        {{estacion.name | titlecase}}
+      </ng-template>
+    </p-multiSelect>
+  </div>
+
+  <div class="filtro">
+    <h5 class="precioLabel" id="precioLabel">Precio: {{selectedPrecios[0] + '€ - ' + selectedPrecios[1] + '€'}}</h5>
+    <p-slider
+      [(ngModel)]="selectedPrecios"
+      [range]="true"
+      [min]="0.00"
+      [max]="precioMaximoSlider"
+      [step]="0.01"
+      ariaLabelledBy="precioLabel"
+      (onSlideEnd)="onPrecioSlideEnd($event)"></p-slider>
+  </div>
+</div>

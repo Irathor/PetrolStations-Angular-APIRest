@@ -9,7 +9,8 @@ import { MapComponent } from './components/map/map.component';
 
 import { PrimeNGModule } from '../prime-ng/prime-ng.module';
 import { SearchResultsComponent } from './components/search-results/search-results.component';
-import { MainMenuComponent } from './components/main-menu/main-menu.component';
+import { SidePanelComponent } from './components/side-panel/side-panel.component';
+import { FiltersPanelComponent } from './components/filters-panel/filters-panel.component';
 import { FavoritesPanelComponent } from './components/favorites-panel/favorites-panel.component';
 import { BottomNavComponent } from './components/bottom-nav/bottom-nav.component';
 import { RoutePlannerComponent } from './components/route-planner/route-planner.component';
@@ -27,7 +28,8 @@ import { PriceHistoryDialogComponent } from './components/price-history-dialog/p
     MapComponent,
     LoadingComponent,
     SearchResultsComponent,
-    MainMenuComponent,
+    SidePanelComponent,
+    FiltersPanelComponent,
     FavoritesPanelComponent,
     BottomNavComponent,
     RoutePlannerComponent,

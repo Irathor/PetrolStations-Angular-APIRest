@@ -31,6 +31,17 @@
     font-size: 1.1rem;
 }
 
+.bottom-nav__icon-wrap{
+    position: relative;
+    display: inline-flex;
+}
+
+.bottom-nav__badge{
+    position: absolute;
+    top: -6px;
+    right: -8px;
+}
+
 .bottom-nav__item span{
     white-space: nowrap;
     overflow: hidden;
@@ -50,4 +61,17 @@
 .bottom-nav__item:disabled{
     color: rgba(255, 255, 255, 0.35);
     cursor: not-allowed;
+}
+
+/* Con 6 accesos (antes 4), en pantallas muy estrechas se reduce ligeramente
+   fuente/icono en vez de ocultar etiquetas — el text-overflow: ellipsis ya
+   existente es la red de seguridad si aun así no cupiera. */
+@media (max-width: 380px){
+    .bottom-nav__item{
+        font-size: 0.62rem;
+    }
+
+    .bottom-nav__item i{
+        font-size: 1rem;
+    }
 }

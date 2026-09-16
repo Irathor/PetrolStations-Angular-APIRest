@@ -30,6 +30,17 @@
     border: 0;
 }
 
+/* Animación de "se vuelve translúcido tras inactividad, sólido al pasar el
+   ratón": la usan tanto la app bar (map-view.component.css, .card) como el
+   panel lateral (side-panel.component.css, .side-panel), cada uno con su
+   propio :hover/animation-delay, de forma independiente. Global para que
+   ambos compartan el mismo nombre en vez de declarar el mismo @keyframes
+   dos veces. */
+@keyframes menuFadeToTranslucent{
+    from{ opacity: 1; }
+    to{ opacity: 0.2; }
+}
+
 /* MapLibre pinta sus popups (estación, lugares buscados, "más barata en tu
    ruta") con fondo blanco por defecto. Se sobrescribe aquí para que combinen
    con el tema oscuro del resto de la app: el texto claro de .station-popup y

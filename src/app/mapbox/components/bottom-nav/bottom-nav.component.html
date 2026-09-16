@@ -28,4 +28,30 @@
     <i class="pi pi-directions" aria-hidden="true"></i>
     <span>Ruta</span>
   </button>
+
+  <button type="button" class="bottom-nav__item"
+    [attr.aria-label]="activeFiltersCount > 0 ? ('Filtros, ' + activeFiltersCount + ' activos') : 'Filtros'"
+    (click)="openFilters.emit()">
+    <span class="bottom-nav__icon-wrap">
+      <i class="pi pi-sliders-h" aria-hidden="true"></i>
+      @if (activeFiltersCount > 0) {
+        <p-badge class="bottom-nav__badge" [value]="activeFiltersCount.toString()" />
+      }
+    </span>
+    <span>Filtros</span>
+  </button>
+
+  <button type="button" class="bottom-nav__item"
+    [class.active]="comparisonSelectionActive"
+    [attr.aria-pressed]="comparisonSelectionActive"
+    [attr.aria-label]="comparisonCount > 0 ? ('Comparar, ' + comparisonCount + ' seleccionadas') : 'Comparar'"
+    (click)="toggleComparisonMode.emit()">
+    <span class="bottom-nav__icon-wrap">
+      <i class="pi pi-table" aria-hidden="true"></i>
+      @if (comparisonCount > 0) {
+        <p-badge class="bottom-nav__badge" [value]="comparisonCount.toString()" severity="info" />
+      }
+    </span>
+    <span>Comparar</span>
+  </button>
 </nav>

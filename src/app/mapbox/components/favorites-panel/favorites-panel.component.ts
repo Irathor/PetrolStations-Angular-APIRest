@@ -2,6 +2,7 @@ import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@
 import { Subscription } from 'rxjs';
 
 import { FavoritesService, MapService, ComparisonService } from '../../services';
+import { MAX_COMPARISON_STATIONS } from '../../services/comparison.service';
 import { FavoriteStation } from '../../services/map.service';
 import { FUEL_PROPERTY, FuelKey } from '../../interfaces/fuel';
 import { describeSchedule, ScheduleStatus } from '../../utils/schedule';
@@ -20,9 +21,10 @@ interface FavoriteStationRow {
 
 /**
  * Panel con el detalle de las gasolineras favoritas (nombre, precio del
- * combustible seleccionado, distancia y horario). Vive embebido en el menú
- * principal flotante (app-main-menu). Injecta los servicios directamente,
- * igual que ya hace app-search-results con MapService/GeolocationsService.
+ * combustible seleccionado, distancia y horario). Vive embebido en la
+ * sección "Favoritas" del panel lateral (app-side-panel). Injecta los
+ * servicios directamente, igual que ya hace app-search-results con
+ * MapService/GeolocationsService.
  */
 @Component({
   selector: 'app-favorites-panel',
@@ -34,6 +36,8 @@ export class FavoritesPanelComponent implements OnInit, OnChanges, OnDestroy {
 
   /** Combustible actualmente seleccionado en la app: determina qué precio se muestra. */
   @Input() selectedCombustible: FuelKey = 'gasoleo_a';
+
+  readonly maxComparisonStations = MAX_COMPARISON_STATIONS;
 
   rows: FavoriteStationRow[] = [];
 

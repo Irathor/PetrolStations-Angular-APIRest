@@ -2,11 +2,12 @@ import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 
 import { Subscription } from 'rxjs';
 
-import { FavoritesService, GeolocationsService, MapService } from '../../services';
+import { ComparisonService, FavoritesService, GeolocationsService, MapService } from '../../services';
 
 import { FacetItem } from '../../interfaces/facets';
 import { OilStationsFilter } from '../../interfaces/oilStationsFilter';
 import { FUEL_OPTIONS, FuelKey } from '../../interfaces/fuel';
+import { MIN_STATIONS_TO_COMPARE } from '../../components/comparison-dialog/comparison-dialog.component';
 
 const DEFAULT_NEAR_ME_RADIUS_KM = 10;
 const DEFAULT_PRECIO_RANGE: [number, number] = [0, 3];
@@ -36,6 +37,7 @@ export class MapViewComponent implements OnInit, OnDestroy {
   estaciones: FacetItem[] = [];
   fuelOptions = FUEL_OPTIONS;
   preciosMaximos: Partial<Record<FuelKey, number>> = {};
+  readonly minStationsToCompare = MIN_STATIONS_TO_COMPARE;
 
   selectedProvincias: string[] = [];
   selectedEstaciones: string[] = [];
@@ -60,6 +62,9 @@ export class MapViewComponent implements OnInit, OnDestroy {
   public priceHistoryVisible: boolean = false;
   public priceHistoryStationId?: string;
 
+  /** Tabla comparativa (p-dialog), abierta desde la barra flotante de modo comparación (ver comparisonSelectionActive). */
+  public comparisonVisible: boolean = false;
+
   private favoritesSubscription?: Subscription;
   private hasActiveRouteSubscription?: Subscription;
 
@@ -69,7 +74,8 @@ export class MapViewComponent implements OnInit, OnDestroy {
   constructor(
     private readonly geolocationsService: GeolocationsService,
     private readonly mapService: MapService,
-    private readonly favoritesService: FavoritesService
+    private readonly favoritesService: FavoritesService,
+    private readonly comparisonService: ComparisonService
     ) { }
 
   ngOnInit(): void {
@@ -141,6 +147,26 @@ export class MapViewComponent implements OnInit, OnDestroy {
 
   openFilters(){
     this.filtersDrawerVisible = true;
+  }
+
+  get comparisonCount(): number {
+    return this.comparisonService.count;
+  }
+
+  get comparisonSelectionActive(): boolean {
+    return this.comparisonService.isSelectionModeActive;
+  }
+
+  toggleComparisonSelectionMode(){
+    this.comparisonService.setSelectionMode(!this.comparisonSelectionActive);
+  }
+
+  exitComparisonMode(){
+    this.comparisonService.setSelectionMode(false);
+  }
+
+  openComparisonTable(){
+    this.comparisonVisible = true;
   }
 
   /** Accedido desde el menú/bottom nav: vuelve a la vista general (sin "cerca de mí" ni "solo favoritas"). */
@@ -245,16 +271,16 @@ export class MapViewComponent implements OnInit, OnDestroy {
 
   }
 
-  selectProvincia(event: any){
-    this.applyFilters({ provincias: event.value });
+  selectProvincia(provincias: string[]){
+    this.applyFilters({ provincias });
   }
 
-  selectEstacion(event: any){
-    this.applyFilters({ estaciones: event.value });
+  selectEstacion(estaciones: string[]){
+    this.applyFilters({ estaciones });
   }
 
-  selectPrecio(event: any){
-    this.applyFilters({ precio: event.values });
+  selectPrecio(precio: number[]){
+    this.applyFilters({ precio });
   }
 
   selectCombustible(event: any){

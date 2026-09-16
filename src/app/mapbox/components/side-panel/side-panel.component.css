@@ -1,0 +1,145 @@
+.side-panel{
+    position: fixed;
+    left: 16px;
+    top: 100px;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 52px;
+    max-height: calc(100vh - 140px);
+    padding: 8px;
+    overflow-y: auto;
+    background-color: var(--color-bg-surface);
+    background-clip: border-box;
+    border: 1px solid var(--color-accent);
+    border-radius: 0.25rem;
+    transition: opacity 0.5s ease, width 0.2s ease;
+}
+
+.side-panel--base{
+    width: 240px;
+}
+
+.side-panel--section{
+    width: 360px;
+}
+
+/* Mismo patrón que .card en map-view.component.css, aplicado aquí de forma
+   independiente: cada contenedor tiene su propio :hover/animation-delay. */
+.side-panel:not(:hover){
+    animation: menuFadeToTranslucent 0.5s ease forwards;
+    animation-delay: 3s;
+}
+
+.side-panel:hover{
+    opacity: 1;
+}
+
+.side-panel-trigger{
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 3px;
+    background: none;
+    color: rgba(255, 255, 255, 0.77);
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.side-panel-trigger:hover{
+    background-color: rgba(117, 190, 248, 0.15);
+    color: #ffffff;
+}
+
+.side-panel-trigger:focus-visible{
+    outline: none;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.side-panel-trigger__badge{
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--color-favorite);
+}
+
+.side-panel__body{
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+
+.side-panel__nav{
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.side-panel__item{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    border: none;
+    border-radius: 4px;
+    background: none;
+    color: rgba(255, 255, 255, 0.87);
+    padding: 10px 8px;
+    font-size: 0.95rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.side-panel__item:hover,
+.side-panel__item:focus-visible{
+    background-color: rgba(117, 190, 248, 0.12);
+}
+
+.side-panel__item:focus-visible{
+    outline: none;
+    box-shadow: inset 0 0 0 0.15rem rgba(0, 123, 255, 0.4);
+}
+
+.side-panel__item.active{
+    color: var(--color-accent);
+}
+
+.side-panel__section{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.side-panel__section-label{
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.side-panel__toggle{
+    align-self: flex-start;
+    border: 1px solid var(--color-accent);
+    border-radius: 12px;
+    background: none;
+    color: var(--color-accent);
+    padding: 3px 10px;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.side-panel__toggle.active{
+    background-color: var(--color-accent);
+    color: var(--color-bg-surface);
+}

@@ -34,7 +34,7 @@
           [attr.aria-pressed]="isSelectedForComparison(row.id)"
           [attr.aria-label]="isSelectedForComparison(row.id) ? ('Quitar ' + row.name + ' de la comparación') : ('Añadir ' + row.name + ' a la comparación')"
           (click)="onToggleComparison(row.id)">
-          {{ limitReachedId === row.id ? 'Máximo 4' : (isSelectedForComparison(row.id) ? '✓ Comparar' : '+ Comparar') }}
+          {{ limitReachedId === row.id ? ('Máximo ' + maxComparisonStations) : (isSelectedForComparison(row.id) ? '✓ Comparar' : '+ Comparar') }}
         </button>
       </li>
     }

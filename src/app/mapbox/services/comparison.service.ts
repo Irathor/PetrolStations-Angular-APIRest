@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
 
 /** Máximo de gasolineras que se pueden tener seleccionadas a la vez para comparar. */
-export const MAX_COMPARISON_STATIONS = 4;
+export const MAX_COMPARISON_STATIONS = 5;
 
 /**
  * Gasolineras seleccionadas para comparar. A diferencia de FavoritesService,
@@ -52,7 +52,7 @@ export class ComparisonService {
    * Alterna la selección de una gasolinera. Devuelve false sin hacer nada si
    * se intenta añadir una nueva por encima de MAX_COMPARISON_STATIONS (quitar
    * una ya seleccionada siempre funciona). El llamante puede usar el valor de
-   * retorno para dar feedback ("máximo 4 estaciones") sin tener que volver a
+   * retorno para dar feedback ("máximo alcanzado") sin tener que volver a
    * consultar isSelected() por separado.
    */
   toggle(id: string): boolean {

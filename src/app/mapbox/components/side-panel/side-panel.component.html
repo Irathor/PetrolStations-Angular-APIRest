@@ -1,0 +1,140 @@
+<div class="side-panel"
+  [class.side-panel--base]="panelState === 'base'"
+  [class.side-panel--section]="panelState === 'section'">
+
+  <button type="button"
+    class="side-panel-trigger"
+    pTooltip="Menú" tooltipPosition="right"
+    aria-haspopup="true"
+    aria-controls="sidePanelRegion"
+    [attr.aria-expanded]="panelExpanded"
+    aria-label="Abrir o cerrar el panel de navegación"
+    (click)="toggleHamburger()">
+    <i class="pi pi-bars" aria-hidden="true"></i>
+    @if (favoritesCount > 0 || activeFiltersCount > 0) {
+      <span class="side-panel-trigger__badge" aria-hidden="true"></span>
+    }
+  </button>
+
+  <span class="sr-only" role="status" aria-live="polite">{{ stateAnnouncement }}</span>
+
+  @if (panelExpanded) {
+    <div id="sidePanelRegion" class="side-panel__body">
+      <nav class="side-panel__nav" aria-label="Navegación principal">
+
+        <button type="button" class="side-panel__item"
+          (click)="onExplorar()">
+          <i class="pi pi-compass" aria-hidden="true"></i>
+          <span>Explorar</span>
+        </button>
+
+        <button type="button" class="side-panel__item"
+          [class.active]="activeSection === 'nearMe'"
+          [attr.aria-expanded]="activeSection === 'nearMe'"
+          (click)="selectSection('nearMe')">
+          <i class="pi pi-map-marker" aria-hidden="true"></i>
+          <span>Cerca de mí</span>
+        </button>
+
+        <button type="button" class="side-panel__item"
+          [class.active]="activeSection === 'favorites'"
+          [attr.aria-expanded]="activeSection === 'favorites'"
+          [attr.aria-label]="favoritesCount > 0 ? ('Favoritas, ' + favoritesCount) : 'Favoritas'"
+          (click)="selectSection('favorites')">
+          <i class="pi pi-star" aria-hidden="true"></i>
+          <span>Favoritas</span>
+          @if (favoritesCount > 0) {
+            <p-badge [value]="favoritesCount.toString()" severity="warn" />
+          }
+        </button>
+
+        <button type="button" class="side-panel__item"
+          [class.active]="activeSection === 'filters'"
+          [attr.aria-expanded]="activeSection === 'filters'"
+          [attr.aria-label]="activeFiltersCount > 0 ? ('Filtros, ' + activeFiltersCount + ' activos') : 'Filtros'"
+          (click)="selectSection('filters')">
+          <i class="pi pi-sliders-h" aria-hidden="true"></i>
+          <span>Filtros</span>
+          @if (activeFiltersCount > 0) {
+            <p-badge [value]="activeFiltersCount.toString()" />
+          }
+        </button>
+
+        <button type="button" class="side-panel__item"
+          [class.active]="activeSection === 'route'"
+          [attr.aria-expanded]="activeSection === 'route'"
+          (click)="selectSection('route')">
+          <i class="pi pi-directions" aria-hidden="true"></i>
+          <span>Ruta</span>
+        </button>
+
+        <button type="button" class="side-panel__item"
+          [class.active]="comparisonSelectionActive"
+          [attr.aria-pressed]="comparisonSelectionActive"
+          [attr.aria-label]="comparisonCount > 0 ? ('Comparar, ' + comparisonCount + ' seleccionadas') : 'Comparar'"
+          (click)="toggleComparisonMode()">
+          <i class="pi pi-table" aria-hidden="true"></i>
+          <span>Comparar</span>
+          @if (comparisonCount > 0) {
+            <p-badge [value]="comparisonCount.toString()" severity="info" />
+          }
+        </button>
+
+      </nav>
+
+      @if (activeSection === 'nearMe') {
+        <div class="side-panel__section">
+          <button type="button" class="side-panel__toggle"
+            [class.active]="nearMeActive"
+            [attr.aria-pressed]="nearMeActive"
+            (click)="nearMeToggle.emit()">
+            {{ nearMeActive ? 'Desactivar "cerca de mí"' : 'Activar "cerca de mí"' }}
+          </button>
+          @if (nearMeActive) {
+            <label id="nearMeRadiusLabel" class="side-panel__section-label">Radio de búsqueda</label>
+            <p-selectButton
+              [options]="radiusOptions"
+              optionLabel="label"
+              optionValue="value"
+              [ngModel]="nearMeRadiusKm"
+              (onChange)="onRadiusChange($event)"
+              ariaLabelledBy="nearMeRadiusLabel" />
+          }
+        </div>
+      }
+
+      @if (activeSection === 'favorites') {
+        <div class="side-panel__section">
+          <button type="button" class="side-panel__toggle"
+            [class.active]="favoritesOnly"
+            [attr.aria-pressed]="favoritesOnly"
+            (click)="favoritesOnlyToggle.emit()">
+            {{ favoritesOnly ? 'Mostrando solo favoritas' : 'Mostrar solo favoritas en el mapa' }}
+          </button>
+          <app-favorites-panel [selectedCombustible]="selectedCombustible" />
+        </div>
+      }
+
+      @if (activeSection === 'filters') {
+        <div class="side-panel__section">
+          <app-filters-panel
+            [provincias]="provincias"
+            [estaciones]="estaciones"
+            [selectedProvincias]="selectedProvincias"
+            [selectedEstaciones]="selectedEstaciones"
+            [selectedPrecios]="selectedPrecios"
+            [precioMaximoSlider]="precioMaximoSlider"
+            (provinciaChange)="provinciaChange.emit($event)"
+            (estacionChange)="estacionChange.emit($event)"
+            (precioChange)="precioChange.emit($event)" />
+        </div>
+      }
+
+      @if (activeSection === 'route') {
+        <div class="side-panel__section">
+          <app-route-planner />
+        </div>
+      }
+    </div>
+  }
+</div>

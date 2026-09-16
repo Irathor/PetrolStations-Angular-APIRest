@@ -1,0 +1,127 @@
+import { Component, EventEmitter, Input, Output } from '@angular/core';
+
+import { FacetItem } from '../../interfaces/facets';
+import { FuelKey } from '../../interfaces/fuel';
+import { ComparisonService } from '../../services';
+
+export const NEAR_ME_RADIUS_OPTIONS_KM = [2, 5, 10, 25, 50];
+
+type PanelState = 'collapsed' | 'base' | 'section';
+type SectionKey = 'nearMe' | 'favorites' | 'filters' | 'route';
+
+/**
+ * Panel lateral izquierdo, persistente (sustituye al menú ☰ flotante
+ * `app-main-menu`, EPIC-9). Tres estados: colapsado (solo el botón
+ * hamburguesa), base (columna de botones icono+texto) y sección abierta
+ * (el panel se ensancha y muestra el contenido de la sección pulsada
+ * embebido en el mismo recuadro, en vez de un p-dialog/p-drawer aparte).
+ * El botón hamburguesa siempre visible retrocede un nivel por pulsación:
+ * sección → base → colapsado, y vuelve a expandir a base desde colapsado.
+ *
+ * Comparar no abre una sección propia: activa/desactiva directamente el
+ * modo de selección en el mapa (ComparisonService, inyectado aquí igual
+ * que hacía app-main-menu). Su contador/"Ver comparativa"/"Salir" ya los
+ * cubre la barra flotante `.comparison-mode-bar`, que vive a nivel de
+ * map-view (visible con independencia del estado de este panel) — abrir
+ * también una sección aquí duplicaría esos mismos controles dos veces en
+ * pantalla a la vez.
+ */
+@Component({
+  selector: 'app-side-panel',
+  templateUrl: './side-panel.component.html',
+  styleUrls: ['./side-panel.component.css'],
+  standalone: false
+})
+export class SidePanelComponent {
+
+  @Input() nearMeActive = false;
+  @Input() nearMeRadiusKm = 10;
+  @Input() favoritesOnly = false;
+  @Input() favoritesCount = 0;
+  @Input() activeFiltersCount = 0;
+  @Input() selectedCombustible: FuelKey = 'gasoleo_a';
+
+  @Input() provincias: FacetItem[] = [];
+  @Input() estaciones: FacetItem[] = [];
+  @Input() selectedProvincias: string[] = [];
+  @Input() selectedEstaciones: string[] = [];
+  @Input() selectedPrecios: number[] = [0, 3];
+  @Input() precioMaximoSlider = 3;
+
+  @Output() explorar = new EventEmitter<void>();
+  @Output() nearMeToggle = new EventEmitter<void>();
+  @Output() nearMeRadiusChange = new EventEmitter<number>();
+  @Output() favoritesOnlyToggle = new EventEmitter<void>();
+  @Output() provinciaChange = new EventEmitter<string[]>();
+  @Output() estacionChange = new EventEmitter<string[]>();
+  @Output() precioChange = new EventEmitter<number[]>();
+
+  readonly radiusOptions = NEAR_ME_RADIUS_OPTIONS_KM.map(km => ({ label: `${ km } km`, value: km }));
+
+  panelState: PanelState = 'base';
+  activeSection?: SectionKey;
+
+  constructor(private readonly comparisonService: ComparisonService) { }
+
+  get panelExpanded(): boolean {
+    return this.panelState !== 'collapsed';
+  }
+
+  get comparisonCount(): number {
+    return this.comparisonService.count;
+  }
+
+  get comparisonSelectionActive(): boolean {
+    return this.comparisonService.isSelectionModeActive;
+  }
+
+  /** Anuncio para lectores de pantalla del estado actual (aria-live), ver también aria-expanded en el botón hamburguesa. */
+  get stateAnnouncement(): string {
+    if(this.panelState === 'collapsed'){ return 'Panel de navegación colapsado'; }
+    if(this.panelState === 'base'){ return 'Panel de navegación expandido'; }
+    const labels: Record<SectionKey, string> = {
+      nearMe: 'Cerca de mí', favorites: 'Favoritas', filters: 'Filtros', route: 'Planificar ruta'
+    };
+    return `Sección ${ labels[this.activeSection!] } abierta`;
+  }
+
+  /** Botón hamburguesa: retrocede un nivel (sección→base→colapsado); desde colapsado, vuelve a expandir a base. */
+  toggleHamburger(){
+    if(this.panelState === 'section'){
+      this.activeSection = undefined;
+      this.panelState = 'base';
+    } else if(this.panelState === 'base'){
+      this.panelState = 'collapsed';
+    } else {
+      this.panelState = 'base';
+    }
+  }
+
+  /** Botones de sección: abren su contenido, o lo cierran (toggle) si ya estaba abierto. */
+  selectSection(section: SectionKey){
+    if(this.activeSection === section){
+      this.activeSection = undefined;
+      this.panelState = 'base';
+    } else {
+      this.activeSection = section;
+      this.panelState = 'section';
+    }
+  }
+
+  onExplorar(){
+    this.activeSection = undefined;
+    this.panelState = 'base';
+    this.explorar.emit();
+  }
+
+  onRadiusChange(event: { value?: number }){
+    if(event.value != null){
+      this.nearMeRadiusChange.emit(event.value);
+    }
+  }
+
+  toggleComparisonMode(){
+    this.comparisonService.setSelectionMode(!this.comparisonSelectionActive);
+  }
+
+}

@@ -20,7 +20,7 @@ import { FUEL_LABEL, FUEL_PROPERTY, FuelKey } from '../interfaces/fuel';
 import { describeSchedule } from '../utils/schedule';
 import { haversineKm } from '../utils/geo';
 import { FavoritesService } from './favorites.service';
-import { ComparisonService } from './comparison.service';
+import { ComparisonService, MAX_COMPARISON_STATIONS } from './comparison.service';
 
 /** Estación ya resuelta con sus datos completos (favoritas y comparador reutilizan la misma forma). */
 export interface FavoriteStation {
@@ -557,7 +557,7 @@ export class MapService {
     if(this.comparisonService.isSelectionModeActive){
       const changed = this.comparisonService.toggle(props.id);
       if(!changed){
-        this.showTransientPopup([lng, lat], 'Máximo 4 estaciones seleccionadas');
+        this.showTransientPopup([lng, lat], `Máximo ${ MAX_COMPARISON_STATIONS } estaciones seleccionadas`);
       }
       return;
     }
