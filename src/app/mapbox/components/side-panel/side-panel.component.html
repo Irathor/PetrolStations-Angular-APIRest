@@ -2,37 +2,39 @@
   [class.side-panel--base]="panelState === 'base'"
   [class.side-panel--section]="panelState === 'section'">
 
-  <button type="button"
-    class="side-panel__brand-toggle"
-    pTooltip="Menú" tooltipPosition="right"
-    aria-haspopup="true"
-    aria-controls="sidePanelRegion"
-    [attr.aria-expanded]="panelExpanded"
-    aria-label="Abrir o cerrar el panel de navegación"
-    (click)="toggleHamburger()">
-    <img src="./../../../../assets/fuelfinder-logo-full.png" alt="FuelFinder" class="side-panel__brand-logo" />
-    @if (favoritesCount > 0 || activeFiltersCount > 0) {
-      <span class="side-panel__brand-toggle-badge" aria-hidden="true"></span>
-    }
-  </button>
+  <div class="side-panel__brand-row">
+    <button type="button"
+      class="side-panel__brand-toggle"
+      pTooltip="Menú" tooltipPosition="right"
+      aria-haspopup="true"
+      aria-controls="sidePanelRegion"
+      [attr.aria-expanded]="panelExpanded"
+      aria-label="Abrir o cerrar el panel de navegación"
+      (click)="toggleHamburger()">
+      <img src="./../../../../assets/fuelfinder-logo-full.png" alt="FuelFinder" class="side-panel__brand-logo" />
+      @if (favoritesCount > 0 || activeFiltersCount > 0) {
+        <span class="side-panel__brand-toggle-badge" aria-hidden="true"></span>
+      }
+    </button>
+
+    <div class="side-panel__header-actions">
+      <button type="button" class="icon-action-btn"
+        pTooltip="Centrar el mapa en tu ubicación" tooltipPosition="right"
+        aria-label="Centrar el mapa en tu ubicación"
+        (click)="centrarMapa()">
+        <i class="pi pi-map"></i>
+      </button>
+
+      <button type="button" class="icon-action-btn"
+        pTooltip="Cambiar entre mapa oscuro y mapa normal" tooltipPosition="right"
+        aria-label="Cambiar el estilo del mapa"
+        (click)="toggleMapStyle()">
+        <i class="pi" [class.pi-sun]="isDarkMap" [class.pi-moon]="!isDarkMap"></i>
+      </button>
+    </div>
+  </div>
 
   <span class="sr-only" role="status" aria-live="polite">{{ stateAnnouncement }}</span>
-
-  <div class="side-panel__header-actions">
-    <button type="button" class="icon-action-btn"
-      pTooltip="Centrar el mapa en tu ubicación" tooltipPosition="right"
-      aria-label="Centrar el mapa en tu ubicación"
-      (click)="centrarMapa()">
-      <i class="pi pi-map"></i>
-    </button>
-
-    <button type="button" class="icon-action-btn"
-      pTooltip="Cambiar entre mapa oscuro y mapa normal" tooltipPosition="right"
-      aria-label="Cambiar el estilo del mapa"
-      (click)="toggleMapStyle()">
-      <i class="pi" [class.pi-sun]="isDarkMap" [class.pi-moon]="!isDarkMap"></i>
-    </button>
-  </div>
 
   @if (panelExpanded) {
     <div class="side-panel__search">

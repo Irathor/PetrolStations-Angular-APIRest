@@ -37,13 +37,34 @@
     opacity: 1;
 }
 
+/* Fila superior: logo a la izquierda (tamaño de la imagen, no ancho
+   completo) y, en base/sección, las acciones de mapa a la derecha,
+   centradas en vertical con el logo. En colapsado se apilan en columna
+   (ver modificador más abajo), como el resto de iconos del riel. */
+.side-panel__brand-row{
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.side-panel--base .side-panel__brand-row,
+.side-panel--section .side-panel__brand-row{
+    justify-content: space-between;
+}
+
+.side-panel:not(.side-panel--base):not(.side-panel--section) .side-panel__brand-row{
+    flex-direction: column;
+}
+
 /* El icono de la app hace de botón de menú: colapsa/expande el panel. */
 .side-panel__brand-toggle{
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 100%;
+    width: fit-content;
     flex-shrink: 0;
     border: none;
     border-radius: 3px;
@@ -80,7 +101,8 @@
 }
 
 /* Centrar mapa / cambiar tema: en colapsado, apilados en columna con el
-   resto de iconos del riel; en expandido, en fila bajo la marca. */
+   resto de iconos del riel; en expandido, en fila a la derecha del logo
+   (ver .side-panel__brand-row), centrados en vertical con él. */
 .side-panel__header-actions{
     display: flex;
     flex-direction: column;
