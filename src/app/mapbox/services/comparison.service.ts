@@ -21,6 +21,29 @@ export class ComparisonService {
   /** Emite cada vez que cambia la selección (añadir/quitar/vaciar), para que la UI (badge, tabla) se mantenga al día. */
   readonly changes$: Observable<void> = this.changes.asObservable();
 
+  /**
+   * Modo de selección en el mapa (EPIC-8): mientras está activo, clicar un
+   * marcador de estación la añade/quita de la comparación en vez de abrir su
+   * popup. Vive aquí (no en MapService) porque es estado de la feature
+   * "comparar", no del mapa en sí.
+   */
+  private selectionMode = false;
+
+  private readonly selectionModeChanges = new Subject<boolean>();
+  readonly selectionModeChanges$: Observable<boolean> = this.selectionModeChanges.asObservable();
+
+  get isSelectionModeActive(): boolean {
+    return this.selectionMode;
+  }
+
+  setSelectionMode(active: boolean){
+    if(this.selectionMode === active){
+      return;
+    }
+    this.selectionMode = active;
+    this.selectionModeChanges.next(active);
+  }
+
   isSelected(id: string): boolean {
     return this.selectedIds.has(id);
   }

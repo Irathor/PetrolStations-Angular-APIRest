@@ -85,8 +85,10 @@
     </button>
 
     <button type="button" class="main-menu__item"
+      [class.active]="selectionModeActive"
+      [attr.aria-pressed]="selectionModeActive"
       [attr.aria-label]="comparisonCount > 0 ? ('Comparar, ' + comparisonCount + ' seleccionadas') : 'Comparar'"
-      (click)="onOpenComparison(); menuPopover.hide()">
+      (click)="onToggleComparisonMode(); menuPopover.hide()">
       <i class="pi pi-table" aria-hidden="true"></i>
       <span>Comparar</span>
       @if (comparisonCount > 0) {
@@ -96,6 +98,24 @@
 
   </nav>
 </p-popover>
+
+@if (selectionModeActive) {
+  <div class="comparison-mode-bar" role="status" aria-live="polite">
+    <span class="comparison-mode-bar__count">
+      {{ comparisonCount }} {{ comparisonCount === 1 ? 'gasolinera seleccionada' : 'gasolineras seleccionadas' }}
+    </span>
+    <button type="button" class="comparison-mode-bar__action"
+      [disabled]="comparisonCount < minStationsToCompare"
+      (click)="openComparisonTable()">
+      Ver comparativa
+    </button>
+    <button type="button" class="comparison-mode-bar__exit"
+      aria-label="Salir del modo de selección"
+      (click)="exitComparisonMode()">
+      Salir
+    </button>
+  </div>
+}
 
 <p-dialog header="Planificar ruta"
   [(visible)]="routePlannerVisible"

@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 
 import { FuelKey } from '../../interfaces/fuel';
 import { ComparisonService } from '../../services';
+import { MIN_STATIONS_TO_COMPARE } from '../comparison-dialog/comparison-dialog.component';
 
 export const NEAR_ME_RADIUS_OPTIONS_KM = [2, 5, 10, 25, 50];
 
@@ -34,6 +35,7 @@ export class MainMenuComponent {
   @Output() openFilters = new EventEmitter<void>();
 
   readonly radiusOptions = NEAR_ME_RADIUS_OPTIONS_KM.map(km => ({ label: `${ km } km`, value: km }));
+  readonly minStationsToCompare = MIN_STATIONS_TO_COMPARE;
 
   favoritesExpanded = false;
   popoverVisible = false;
@@ -48,6 +50,11 @@ export class MainMenuComponent {
    * suscribirse a `changes$` solo para mantenerlo sincronizado. */
   get comparisonCount(): number {
     return this.comparisonService.count;
+  }
+
+  /** Modo de selección en el mapa activo (EPIC-8): mientras dure, clicar un marcador de estación la añade/quita de la comparación en vez de abrir su popup. */
+  get selectionModeActive(): boolean {
+    return this.comparisonService.isSelectionModeActive;
   }
 
   onExplorar(){
@@ -71,8 +78,17 @@ export class MainMenuComponent {
     this.routePlannerVisible = true;
   }
 
-  onOpenComparison(){
+  /** Alterna el modo de selección en el mapa: activarlo cierra el menú (la selección se hace clicando marcadores), desactivarlo devuelve el mapa a su comportamiento normal sin perder lo ya seleccionado. */
+  onToggleComparisonMode(){
     this.favoritesExpanded = false;
+    this.comparisonService.setSelectionMode(!this.selectionModeActive);
+  }
+
+  exitComparisonMode(){
+    this.comparisonService.setSelectionMode(false);
+  }
+
+  openComparisonTable(){
     this.comparisonVisible = true;
   }
 

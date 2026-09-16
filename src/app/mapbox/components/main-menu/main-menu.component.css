@@ -102,3 +102,57 @@
     background-color: var(--color-accent);
     color: var(--color-bg-surface);
 }
+
+.comparison-mode-bar{
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-radius: 24px;
+    background-color: var(--color-bg-surface);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    color: rgba(255, 255, 255, 0.87);
+    font-size: 0.85rem;
+}
+
+/* En móvil, la barra fija app-bottom-nav ocupa la franja inferior: la barra de comparación se coloca justo encima. */
+@media (max-width: 900px){
+    .comparison-mode-bar{
+        bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+.comparison-mode-bar__count{
+    white-space: nowrap;
+}
+
+.comparison-mode-bar__action,
+.comparison-mode-bar__exit{
+    border: none;
+    border-radius: 16px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.comparison-mode-bar__action{
+    background-color: var(--color-accent);
+    color: var(--color-bg-surface);
+}
+
+.comparison-mode-bar__action:disabled{
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.comparison-mode-bar__exit{
+    background: none;
+    color: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}

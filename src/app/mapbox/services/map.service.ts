@@ -46,6 +46,7 @@ const OIL_STATIONS_SOURCE = 'oil-stations';
 const CLUSTERS_LAYER = 'oil-stations-clusters';
 const CLUSTER_COUNT_LAYER = 'oil-stations-cluster-count';
 const UNCLUSTERED_LAYER = 'oil-stations-unclustered';
+const COMPARISON_HALO_LAYER = 'oil-stations-comparison-halo';
 
 const DEFAULT_FUEL: FuelKey = 'gasoleo_a';
 /** Desvío máximo (km) admitido por defecto al buscar la más barata sobre una ruta: usado por el flujo "Cómo llegar" del popup; el planificador de ruta permite ajustarlo. */
@@ -168,7 +169,11 @@ export class MapService {
     private readonly currencyPipe: CurrencyPipe,
     private readonly favoritesService: FavoritesService,
     private readonly comparisonService: ComparisonService
-    ){}
+    ){
+      // MapService es un singleton de toda la app: esta suscripción vive
+      // mientras vive la app, igual que el propio servicio.
+      this.comparisonService.changes$.subscribe(() => this.refreshComparisonHighlight());
+    }
 
   /** Combustible actualmente usado para colorear clusters y buscar la más barata en ruta (lo lee el planificador como valor por defecto de su formulario). */
   get selectedFuelKey(): FuelKey {
@@ -440,6 +445,24 @@ export class MapService {
       }
     });
 
+    // Halo de las estaciones seleccionadas para comparar (EPIC-8): capa
+    // aparte en vez de feature-state, porque las gasolineras se agrupan en
+    // clusters y su id vive en `properties`, no como id de feature GeoJSON.
+    // El filtro se recalcula en refreshComparisonHighlight().
+    this.map.addLayer({
+      id: COMPARISON_HALO_LAYER,
+      type: 'circle',
+      source: OIL_STATIONS_SOURCE,
+      filter: ['in', ['get', 'id'], ['literal', []]],
+      paint: {
+        'circle-radius': 11,
+        'circle-color': 'transparent',
+        'circle-stroke-width': 3,
+        'circle-stroke-color': '#ffd54f'
+      }
+    });
+    this.refreshComparisonHighlight();
+
     this.map.on('click', CLUSTERS_LAYER, (e) => this.onClusterClick(e));
     this.map.on('click', UNCLUSTERED_LAYER, (e) => this.onStationClick(e));
 
@@ -531,11 +554,41 @@ export class MapService {
     const props = feature.properties as OilStationProperties;
     const [lng, lat] = (feature.geometry as GeoJSON.Point).coordinates;
 
+    if(this.comparisonService.isSelectionModeActive){
+      const changed = this.comparisonService.toggle(props.id);
+      if(!changed){
+        this.showTransientPopup([lng, lat], 'Máximo 4 estaciones seleccionadas');
+      }
+      return;
+    }
+
     this.stationPopup?.remove();
     this.stationPopup = new Popup()
       .setLngLat([lng, lat])
       .setDOMContent(this.buildStationPopupElement(props, [lng, lat]))
       .addTo(this.map);
+  }
+
+  /** Recalcula qué estaciones se pintan con el halo de "seleccionada para comparar" (ver COMPARISON_HALO_LAYER). No hace nada si el mapa o la capa todavía no existen; se vuelve a llamar desde setupOilStationsLayers() en cuanto la capa se crea. */
+  private refreshComparisonHighlight(){
+    if(!this.map?.getLayer(COMPARISON_HALO_LAYER)){
+      return;
+    }
+    this.map.setFilter(COMPARISON_HALO_LAYER, [
+      'in', ['get', 'id'], ['literal', this.comparisonService.getAll()]
+    ] as any);
+  }
+
+  /** Popup breve sin botones (p.ej. aviso de límite alcanzado al comparar), que se auto-cierra. */
+  private showTransientPopup(coords: [number, number], message: string){
+    if(!this.map){
+      return;
+    }
+    const popup = new Popup({ closeButton: false, className: 'transient-popup' })
+      .setLngLat(coords)
+      .setHTML(`<span role="alert">${ message }</span>`)
+      .addTo(this.map);
+    setTimeout(() => popup.remove(), 1500);
   }
 
   /**
@@ -631,32 +684,6 @@ export class MapService {
       priceList.appendChild(line);
     }
     container.appendChild(priceList);
-
-    const compareBtn = document.createElement('button');
-    compareBtn.type = 'button';
-    compareBtn.className = 'station-popup__compare-btn';
-
-    const applyCompareState = (isSelected: boolean) => {
-      compareBtn.textContent = isSelected ? '✓ Comparando' : '+ Comparar';
-      compareBtn.classList.toggle('is-selected', isSelected);
-      compareBtn.setAttribute('aria-pressed', String(isSelected));
-      compareBtn.setAttribute('aria-label', isSelected ? 'Quitar de la comparación' : 'Añadir a la comparación');
-    };
-    applyCompareState(this.comparisonService.isSelected(props.id));
-
-    compareBtn.addEventListener('click', () => {
-      const changed = this.comparisonService.toggle(props.id);
-      if(!changed){
-        // Límite de estaciones alcanzado: feedback breve y accesible (aria-live)
-        // en vez de un toast que no existe en la app todavía.
-        compareBtn.textContent = 'Máximo 4 estaciones';
-        compareBtn.setAttribute('aria-live', 'polite');
-        setTimeout(() => applyCompareState(this.comparisonService.isSelected(props.id)), 1500);
-        return;
-      }
-      applyCompareState(this.comparisonService.isSelected(props.id));
-    });
-    container.appendChild(compareBtn);
 
     if(this.priceHistoryRequestHandler){
       const historyBtn = document.createElement('button');
