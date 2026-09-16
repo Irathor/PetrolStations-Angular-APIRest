@@ -19,6 +19,7 @@ import { OilStationFeature, OilStationProperties, OilStationsCollection } from '
 import { FUEL_LABEL, FUEL_PROPERTY, FuelKey } from '../interfaces/fuel';
 import { describeSchedule } from '../utils/schedule';
 import { haversineKm } from '../utils/geo';
+import { buildBrandColorMatchExpression, getBrandColor, getBrandForegroundColor, getBrandTextColor } from '../utils/brand-colors';
 import { FavoritesService } from './favorites.service';
 import { ComparisonService, MAX_COMPARISON_STATIONS } from './comparison.service';
 
@@ -60,20 +61,6 @@ export const MAP_STYLE_LIGHT_URL = 'https://tiles.openfreemap.org/styles/liberty
 
 export type MapStyleMode = 'dark' | 'light';
 const MAP_STYLE_STORAGE_KEY = 'oil-stations:estilo-mapa';
-
-// Color por marca para los puntos individuales (mismo criterio que antes,
-// ahora expresado como una expresión del estilo en vez de JS por marcador).
-const BRAND_COLOR_MATCH: any[] = [
-  'match', ['get', 'Estacion'],
-  'REPSOL', '#03a9f4',
-  'CAMPSA', '#e53935',
-  'PETRONOR', '#1e88e5',
-  'CEPSA', '#fb8c00',
-  'SHELL', '#fdd835',
-  'GALP', '#8e24aa',
-  'BP', '#43a047',
-  '#9e9e9e' // color por defecto para el resto de marcas
-];
 
 /** Suma/conteo por combustible acumulados por cluster (los 4 a la vez, es barato). */
 function buildClusterProperties(): Record<string, any> {
@@ -438,7 +425,7 @@ export class MapService {
       source: OIL_STATIONS_SOURCE,
       filter: ['!', ['has', 'point_count']],
       paint: {
-        'circle-color': BRAND_COLOR_MATCH as any,
+        'circle-color': buildBrandColorMatchExpression() as any,
         'circle-radius': 7,
         'circle-stroke-width': 1,
         'circle-stroke-color': '#ffffff'
@@ -604,9 +591,22 @@ export class MapService {
     // mismos tokens de color que el resto de la app.
     const container = document.createElement('div');
     container.className = 'station-popup';
+    // El precio destacado y los botones toman este color en vez del acento
+    // fijo de la app, para que toda la tarjeta siga la identidad de marca
+    // (ver getBrandTextColor: variante con contraste garantizado sobre el
+    // fondo oscuro, no el color de marca "real" que sí lleva el chip).
+    container.style.setProperty('--brand-color', getBrandTextColor(props.Estacion));
+    container.style.setProperty('--brand-color-fill', getBrandColor(props.Estacion));
+    container.style.setProperty('--brand-color-on-fill', getBrandForegroundColor(props.Estacion));
 
     const header = document.createElement('div');
     header.className = 'station-popup__header';
+
+    const brandChip = document.createElement('span');
+    brandChip.className = 'station-popup__brand-chip';
+    brandChip.style.backgroundColor = getBrandColor(props.Estacion);
+    brandChip.setAttribute('aria-hidden', 'true');
+    header.appendChild(brandChip);
 
     const title = document.createElement('h6');
     title.className = 'station-popup__title';

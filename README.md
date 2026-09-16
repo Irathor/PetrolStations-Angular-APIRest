@@ -163,13 +163,38 @@ Slack) si se configura `ALERT_WEBHOOK_URL` — ver ADR-3 en `docs/adr/`.
 
 ## Funcionalidades
 
-### Navegación (rediseñada en EPIC-4)
+### Navegación (panel lateral, EPIC-9 — sustituye al rediseño de EPIC-4)
 
-- **App bar superior** (`p-menubar`): logo+marca FuelFinder, buscador de lugares (Photon) centrado, selector de combustible, botón de centrar mapa, toggle de tema (mapa oscuro/normal) y botón de menú.
-- **Menú flotante** (se abre/cierra, no permanente) con accesos a Explorar, Cerca de mí, Favoritas y Filtros.
-- **Filtros en `p-drawer`** (provincia/marca/combustible/precio), a la derecha en desktop y desde abajo en móvil, con badge indicando el nº de filtros activos — sustituye a la antigua barra de filtros siempre visible.
-- **Bottom navigation** de 4 accesos (Explorar / Cerca de mí / Favoritas / Ruta) en viewport móvil, en vez de la barra de filtros apilada.
-- **Card de popup de estación**: nombre, dirección, precio destacado, badge de abierta/cerrada, distancia, botón "Cómo llegar", y botones "+ Comparar" y "Ver evolución de precios".
+- **Escritorio (> 900px): panel lateral persistente** (`app-side-panel`), a la
+  izquierda, con tres estados: colapsado (riel de iconos cuadrados, sin
+  texto), base (columna de botones icono+texto) y sección abierta (el panel
+  se ensancha y muestra el contenido inline, sin `p-dialog`/`p-drawer`
+  aparte). El icono de la app hace de botón de colapsar/expandir. Aloja
+  también lo que antes vivía en la app bar: buscador de lugares, selector de
+  combustible ("Filtra por tipo de combustible"), centrar mapa y cambiar
+  tema — estos dos últimos alineados junto al logo. Mide el 90% del alto de
+  la página, centrado en vertical, y se atenúa tras 3s de inactividad
+  (recupera opacidad al pasar el ratón), igual que hacía la app bar antes.
+- **Móvil (≤ 900px): app bar superior clásica** (logo, buscador, combustible,
+  centrar mapa, tema) + **bottom navigation de 6 accesos** (Explorar / Cerca
+  de mí / Favoritas / Ruta / Filtros / Comparar) — no hay panel lateral en
+  este viewport.
+- **Filtros**: mismo componente (`app-filters-panel`) reutilizado en dos
+  sitios sin duplicar plantilla — sección inline del panel lateral en
+  desktop, `p-drawer` (desde abajo) en móvil — con badge del nº de filtros
+  activos.
+- **Comparador**: modo de selección directo sobre el mapa (clic en un
+  marcador lo añade/quita, con resaltado visual), activado desde el panel
+  lateral o el bottom nav; una barra flotante muestra el contador, "Ver
+  comparativa" y "Salir".
+- **Card de popup de estación**: chip del color de la marca junto al nombre,
+  dirección, precio destacado, badge de abierta/cerrada, distancia, y los
+  botones "Ver evolución de precios"/"Cómo llegar" — precio y botones toman
+  el mismo color que el chip (con el contraste ajustado automáticamente si
+  el tono de marca no es legible tal cual sobre el fondo oscuro, ver
+  `utils/brand-colors.ts` y `utils/color.ts`). El popup del mapa siempre se
+  pinta por encima del panel lateral, para no perderlo de vista si coincide
+  con él en pantalla.
 
 ### Funciones sobre el mapa
 
@@ -183,7 +208,7 @@ Slack) si se configura `ALERT_WEBHOOK_URL` — ver ADR-3 en `docs/adr/`.
 - **Filtros recordados**: provincia, marca, precio y combustible se guardan en `localStorage` y se restauran en la siguiente visita.
 - **Feedback de carga y de "sin resultados"**: spinner mientras se pide al backend, aviso si una combinación de filtros no devuelve ninguna gasolinera.
 - **Mapa oscuro o normal**: alterna entre el estilo oscuro de OpenFreeMap y su estilo "liberty" (colores clásicos de mapa), sin perder las gasolineras ya cargadas ni la posición del mapa. La elección se recuerda en `localStorage`.
-- **Responsive mobile-first**: app bar, drawer y bottom nav se adaptan a móvil (ver "Navegación" arriba).
+- **Responsive mobile-first**: panel lateral (desktop) / app bar + bottom nav (móvil) y drawer de filtros se adaptan al viewport (ver "Navegación" arriba).
 
 ### Planificador de ruta avanzado (EPIC-5)
 
@@ -195,9 +220,9 @@ consumido en el desvío (asumiendo un consumo de referencia de ~7 L/100 km),
 con aviso explícito de que es una estimación, no el consumo real del
 vehículo.
 
-### Comparador de gasolineras (EPIC-5)
+### Comparador de gasolineras (EPIC-5, modo de selección desde EPIC-8/EPIC-9)
 
-Selecciona entre 2 y 4 estaciones (desde el popup con "+ Comparar" o desde
+Selecciona entre 2 y 5 estaciones (modo de selección en el mapa, o desde
 Favoritas) y muestra una tabla comparativa con precio de los 4 combustibles,
 distancia, horario (abierta/cerrada) y coste de viaje cuando aplica,
 destacando la opción más barata.

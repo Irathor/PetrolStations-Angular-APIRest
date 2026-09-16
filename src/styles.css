@@ -90,6 +90,13 @@
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
 }
 
+/* Si el popup cae bajo el panel lateral (z-index: 5) o la barra de modo
+   comparar (z-index: 20), debe quedar por encima de ambos para no perderlo
+   de vista al pulsar una estación cerca del panel. */
+.maplibregl-popup{
+    z-index: 30;
+}
+
 .maplibregl-popup-anchor-bottom .maplibregl-popup-tip{
     border-top-color: var(--color-bg-surface);
 }
@@ -125,6 +132,19 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
+}
+
+/* Punto de color de la marca (ver getBrandColor en utils/brand-colors.ts):
+   identifica la gasolinera de un vistazo sin logos corporativos (riesgo de
+   marca). El anillo blanco le da definición propia sobre el fondo oscuro,
+   independientemente de lo clara/oscura que sea la marca. */
+.station-popup__brand-chip{
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25);
 }
 
 .station-popup__title{
@@ -183,7 +203,11 @@
     margin-top: 8px;
     font-size: 1.4rem;
     font-weight: bold;
-    color: var(--color-accent);
+    /* --brand-color lo fija buildStationPopupElement() por tarjeta, ya
+       ajustado a contraste ≥4.5:1 sobre el fondo (ver getBrandTextColor en
+       utils/brand-colors.ts); el accent es solo el valor por defecto si
+       por lo que sea no se hubiera fijado la variable. */
+    color: var(--brand-color, var(--color-accent));
 }
 
 .station-popup__price small{
@@ -205,37 +229,39 @@
     margin-top: 8px;
     width: 100%;
     padding: 4px 0;
-    border: 1px solid var(--color-accent);
+    border: 1px solid var(--brand-color, var(--color-accent));
     border-radius: 3px;
     background-color: transparent;
-    color: var(--color-accent);
+    color: var(--brand-color, var(--color-accent));
     cursor: pointer;
     transition: background-color 0.15s, color 0.15s;
 }
 
 .station-popup__history-btn:hover{
-    background-color: var(--color-accent);
+    background-color: var(--brand-color, var(--color-accent));
     color: var(--color-bg-surface);
 }
 
+/* Relleno con el color de marca "real" (--brand-color-fill, sin ajustar
+   para contraste de texto: es fondo, no letra) en vez del acento genérico;
+   el texto usa --brand-color-on-fill (blanco u oscuro, el que tenga más
+   contraste contra ESE color concreto — ver getBrandForegroundColor). */
 .directions-btn{
     margin-top: 8px;
     width: 100%;
     padding: 4px 0;
-    border: 1px solid var(--color-primary);
+    border: 1px solid var(--brand-color-fill, var(--color-primary));
     border-radius: 3px;
-    background-color: var(--color-primary);
-    color: #ffffff;
+    background-color: var(--brand-color-fill, var(--color-primary));
+    color: var(--brand-color-on-fill, #ffffff);
     cursor: pointer;
-    transition: background-color 0.15s, border-color 0.15s;
+    transition: filter 0.15s;
 }
 
 .directions-btn:hover{
-    background-color: var(--color-primary-hover);
-    border-color: var(--color-primary-hover);
+    filter: brightness(1.12);
 }
 
 .directions-btn:active{
-    background-color: var(--color-primary-active);
-    border-color: var(--color-primary-active);
+    filter: brightness(0.92);
 }
